@@ -23,21 +23,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for redirect result first
-    handleAuthRedirect().then(result => {
-      if (result?.user) {
-        console.log("Auth redirect completed:", result.user.email);
-        // If new user, they might need to go through onboarding
-        if (result.isNewUser) {
-          const pendingRole = sessionStorage.getItem('pendingAuthRole');
-          if (pendingRole) {
-            console.log("New user with role:", pendingRole);
-            sessionStorage.removeItem('pendingAuthRole');
-          }
-        }
-      }
-    }).catch(err => {
-      console.error("Error handling redirect:", err);
+    // Handle auth redirect separately (don't block main auth state)
+    handleAuthRedirect().catch(() => {
+      // Silently handle redirect errors
     });
 
     const unsubscribe = onAuthStateChange(async (fbUser) => {

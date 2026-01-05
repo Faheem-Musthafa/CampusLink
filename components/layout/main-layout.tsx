@@ -3,18 +3,28 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "./sidebar";
 import { useRouter } from "next/navigation";
-
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [showTimeout, setShowTimeout] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
     }
   }, [user, loading, router]);
+
+  // Show timeout message if loading takes too long (5 seconds)
+  useEffect(() => {
+    if (loading) {
+      const timer = setTimeout(() => setShowTimeout(true), 5000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowTimeout(false);
+    }
+  }, [loading]);
 
   if (loading) {
     return (
@@ -26,6 +36,19 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
           </div>
           <p className="text-lg font-medium text-gray-700">Loading your workspace...</p>
           <p className="text-sm text-gray-500 mt-2">Please wait a moment</p>
+          {showTimeout && (
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg max-w-sm mx-auto">
+              <p className="text-sm text-yellow-800">
+                Taking longer than usual. Please check your internet connection.
+              </p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="mt-2 text-sm text-blue-600 hover:underline"
+              >
+                Refresh page
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );

@@ -10,23 +10,31 @@ import {
   orderBy,
   onSnapshot,
   serverTimestamp,
-  Timestamp,
   limit,
+  arrayUnion,
+  arrayRemove,
+  deleteDoc,
+  DocumentData,
 } from "firebase/firestore";
 import { db } from "./config";
 import { ChatMessage, Conversation } from "@/types";
 
-export const createConversation = async (participantIds: string[]): Promise<string> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
+// ============================================
+// CONVERSATION FUNCTIONS
+// ============================================
 
-  const conversationData: Omit<Conversation, "id" | "createdAt" | "updatedAt"> = {
-    participants: participantIds,
-  };
+/**
+ * Create a new conversation between participants
+ */
+export const createConversation = async (participantIds: string[]): Promise<string> => {
+  if (!db) throw new Error("Firestore is not initialized");
 
   const docRef = await addDoc(collection(db, "conversations"), {
-    ...conversationData,
+    participants: participantIds,
+    pinnedBy: [],
+    archivedBy: [],
+    mutedBy: [],
+    clearedBy: {},
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -34,36 +42,26 @@ export const createConversation = async (participantIds: string[]): Promise<stri
   return docRef.id;
 };
 
+/**
+ * Get a single conversation by ID
+ */
 export const getConversation = async (conversationId: string): Promise<Conversation | null> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
+  if (!db) throw new Error("Firestore is not initialized");
 
   const conversationDoc = await getDoc(doc(db, "conversations", conversationId));
   if (!conversationDoc.exists()) return null;
 
-  const data = conversationDoc.data();
-  return {
-    id: conversationDoc.id,
-    ...data,
-    lastMessage: data.lastMessage
-      ? {
-          ...data.lastMessage,
-          timestamp: data.lastMessage.timestamp?.toDate() || new Date(),
-        }
-      : undefined,
-    createdAt: data.createdAt?.toDate() || new Date(),
-    updatedAt: data.updatedAt?.toDate() || new Date(),
-  } as Conversation;
+  return parseConversation(conversationDoc.id, conversationDoc.data());
 };
 
+/**
+ * Get conversation between two users
+ */
 export const getConversationBetweenUsers = async (
   userId1: string,
   userId2: string
 ): Promise<Conversation | null> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
+  if (!db) throw new Error("Firestore is not initialized");
 
   const q = query(
     collection(db, "conversations"),
@@ -76,26 +74,14 @@ export const getConversationBetweenUsers = async (
   );
 
   if (!conversation) return null;
-
-  const data = conversation.data();
-  return {
-    id: conversation.id,
-    ...data,
-    lastMessage: data.lastMessage
-      ? {
-          ...data.lastMessage,
-          timestamp: data.lastMessage.timestamp?.toDate() || new Date(),
-        }
-      : undefined,
-    createdAt: data.createdAt?.toDate() || new Date(),
-    updatedAt: data.updatedAt?.toDate() || new Date(),
-  } as Conversation;
+  return parseConversation(conversation.id, conversation.data());
 };
 
+/**
+ * Get all conversations for a user
+ */
 export const getUserConversations = async (userId: string): Promise<Conversation[]> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized. Please check your Firebase configuration.");
-  }
+  if (!db) throw new Error("Firestore is not initialized");
 
   try {
     const q = query(
@@ -105,42 +91,91 @@ export const getUserConversations = async (userId: string): Promise<Conversation
     );
     const snapshot = await getDocs(q);
 
-    return snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        lastMessage: data.lastMessage
-          ? {
-              ...data.lastMessage,
-              timestamp: data.lastMessage.timestamp?.toDate() || new Date(),
-            }
-          : undefined,
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
-      } as Conversation;
-    });
-  } catch (error: any) {
-    // Handle missing index error
-    if (error.code === "failed-precondition" || error.message?.includes("index")) {
-      console.error(
-        "Firestore index required. Please create the composite index for conversations queries:",
-        error.message
-      );
-      // If the error contains a link to create the index, log it
-      if (error.message?.includes("https://console.firebase.google.com")) {
-        const indexUrl = error.message.match(/https:\/\/[^\s]+/)?.[0];
-        if (indexUrl) {
-          console.error("Create index at:", indexUrl);
-        }
-      }
-      // Return empty array gracefully so the app doesn't crash
+    return snapshot.docs.map((doc) => parseConversation(doc.id, doc.data()));
+  } catch (error: unknown) {
+    const err = error as { code?: string; message?: string };
+    if (err.code === "failed-precondition" || err.message?.includes("index")) {
+      console.error("Firestore index required for conversations query");
       return [];
     }
     throw error;
   }
 };
 
+/**
+ * Pin or unpin a conversation for a user
+ */
+export const togglePinConversation = async (
+  conversationId: string,
+  userId: string,
+  pin: boolean
+): Promise<void> => {
+  if (!db) throw new Error("Firestore is not initialized");
+
+  const conversationRef = doc(db, "conversations", conversationId);
+  
+  await updateDoc(conversationRef, {
+    pinnedBy: pin ? arrayUnion(userId) : arrayRemove(userId),
+  });
+};
+
+/**
+ * Archive or unarchive a conversation for a user
+ */
+export const toggleArchiveConversation = async (
+  conversationId: string,
+  userId: string,
+  archive: boolean
+): Promise<void> => {
+  if (!db) throw new Error("Firestore is not initialized");
+
+  const conversationRef = doc(db, "conversations", conversationId);
+  
+  await updateDoc(conversationRef, {
+    archivedBy: archive ? arrayUnion(userId) : arrayRemove(userId),
+  });
+};
+
+/**
+ * Mute or unmute a conversation for a user
+ */
+export const toggleMuteConversation = async (
+  conversationId: string,
+  userId: string,
+  mute: boolean
+): Promise<void> => {
+  if (!db) throw new Error("Firestore is not initialized");
+
+  const conversationRef = doc(db, "conversations", conversationId);
+  
+  await updateDoc(conversationRef, {
+    mutedBy: mute ? arrayUnion(userId) : arrayRemove(userId),
+  });
+};
+
+/**
+ * Clear conversation history for a user (marks timestamp)
+ */
+export const clearConversationHistory = async (
+  conversationId: string,
+  userId: string
+): Promise<void> => {
+  if (!db) throw new Error("Firestore is not initialized");
+
+  const conversationRef = doc(db, "conversations", conversationId);
+  
+  await updateDoc(conversationRef, {
+    [`clearedBy.${userId}`]: serverTimestamp(),
+  });
+};
+
+// ============================================
+// MESSAGE FUNCTIONS
+// ============================================
+
+/**
+ * Send a new message
+ */
 export const sendMessage = async (
   conversationId: string,
   senderId: string,
@@ -164,11 +199,9 @@ export const sendMessage = async (
   },
   replyTo?: string
 ): Promise<string> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
+  if (!db) throw new Error("Firestore is not initialized");
 
-  const messageData: Omit<ChatMessage, "id" | "timestamp"> = {
+  const messageData: Record<string, unknown> = {
     conversationId,
     senderId,
     receiverId,
@@ -176,19 +209,17 @@ export const sendMessage = async (
     read: false,
     messageType,
     status: "sent",
+    timestamp: serverTimestamp(),
     ...mediaData,
-    ...(linkPreview && { linkPreview }),
-    ...(replyTo && { replyTo }),
   };
 
-  const docRef = await addDoc(collection(db, "messages"), {
-    ...messageData,
-    timestamp: serverTimestamp(),
-  });
+  if (linkPreview) messageData.linkPreview = linkPreview;
+  if (replyTo) messageData.replyTo = replyTo;
+
+  const docRef = await addDoc(collection(db, "messages"), messageData);
 
   // Update conversation last message
-  const conversationRef = doc(db, "conversations", conversationId);
-  await updateDoc(conversationRef, {
+  await updateDoc(doc(db, "conversations", conversationId), {
     lastMessage: {
       content,
       timestamp: serverTimestamp(),
@@ -200,13 +231,14 @@ export const sendMessage = async (
   return docRef.id;
 };
 
+/**
+ * Get messages for a conversation
+ */
 export const getMessages = async (
   conversationId: string,
   limitCount: number = 50
 ): Promise<ChatMessage[]> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
+  if (!db) throw new Error("Firestore is not initialized");
 
   const q = query(
     collection(db, "messages"),
@@ -217,23 +249,21 @@ export const getMessages = async (
   const snapshot = await getDocs(q);
 
   return snapshot.docs
-    .map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        timestamp: data.timestamp?.toDate() || new Date(),
-      } as ChatMessage;
-    })
+    .map((doc) => parseMessage(doc.id, doc.data()))
     .reverse();
 };
 
+/**
+ * Subscribe to messages in real-time
+ */
 export const subscribeToMessages = (
   conversationId: string,
-  callback: (messages: ChatMessage[]) => void
+  callback: (messages: ChatMessage[]) => void,
+  onError?: (error: Error) => void
 ): (() => void) => {
   if (!db) {
-    throw new Error("Firestore is not initialized");
+    onError?.(new Error("Firestore is not initialized"));
+    return () => {};
   }
 
   const q = query(
@@ -243,25 +273,26 @@ export const subscribeToMessages = (
     limit(50)
   );
 
-  return onSnapshot(q, (snapshot) => {
-    const messages = snapshot.docs
-      .map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          timestamp: data.timestamp?.toDate() || new Date(),
-        } as ChatMessage;
-      })
-      .reverse();
-    callback(messages);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const messages = snapshot.docs
+        .map((doc) => parseMessage(doc.id, doc.data()))
+        .reverse();
+      callback(messages);
+    },
+    (error) => {
+      console.error("Message subscription error:", error);
+      onError?.(error);
+    }
+  );
 };
 
+/**
+ * Mark a single message as read
+ */
 export const markMessageAsRead = async (messageId: string): Promise<void> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
+  if (!db) throw new Error("Firestore is not initialized");
 
   await updateDoc(doc(db, "messages", messageId), {
     read: true,
@@ -270,35 +301,14 @@ export const markMessageAsRead = async (messageId: string): Promise<void> => {
   });
 };
 
-// Mark message as delivered
-export const markMessageAsDelivered = async (messageId: string): Promise<void> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
-
-  const messageRef = doc(db, "messages", messageId);
-  const messageDoc = await getDoc(messageRef);
-  
-  if (messageDoc.exists()) {
-    const data = messageDoc.data();
-    // Only update if not already read
-    if (data.status !== "read") {
-      await updateDoc(messageRef, {
-        status: "delivered",
-        deliveredAt: serverTimestamp(),
-      });
-    }
-  }
-};
-
-// Mark all messages in conversation as delivered for current user
+/**
+ * Mark all unread messages in conversation as delivered
+ */
 export const markConversationMessagesDelivered = async (
   conversationId: string,
   userId: string
 ): Promise<void> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
+  if (!db) throw new Error("Firestore is not initialized");
 
   const q = query(
     collection(db, "messages"),
@@ -308,24 +318,24 @@ export const markConversationMessagesDelivered = async (
   );
 
   const snapshot = await getDocs(q);
-  const updates = snapshot.docs.map((docSnap) =>
-    updateDoc(doc(db!, "messages", docSnap.id), {
-      status: "delivered",
-      deliveredAt: serverTimestamp(),
-    })
+  await Promise.all(
+    snapshot.docs.map((docSnap) =>
+      updateDoc(doc(db!, "messages", docSnap.id), {
+        status: "delivered",
+        deliveredAt: serverTimestamp(),
+      })
+    )
   );
-
-  await Promise.all(updates);
 };
 
-// Mark all messages in conversation as read for current user
+/**
+ * Mark all unread messages in conversation as read
+ */
 export const markConversationMessagesRead = async (
   conversationId: string,
   userId: string
 ): Promise<void> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
+  if (!db) throw new Error("Firestore is not initialized");
 
   const q = query(
     collection(db, "messages"),
@@ -335,130 +345,55 @@ export const markConversationMessagesRead = async (
   );
 
   const snapshot = await getDocs(q);
-  const updates = snapshot.docs.map((docSnap) =>
-    updateDoc(doc(db!, "messages", docSnap.id), {
-      read: true,
-      status: "read",
-      readAt: serverTimestamp(),
-    })
+  await Promise.all(
+    snapshot.docs.map((docSnap) =>
+      updateDoc(doc(db!, "messages", docSnap.id), {
+        read: true,
+        status: "read",
+        readAt: serverTimestamp(),
+      })
+    )
   );
-
-  await Promise.all(updates);
 };
 
-// Pin/Unpin conversation
-export const togglePinConversation = async (
-  conversationId: string,
-  userId: string,
-  isPinned: boolean
-): Promise<void> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
+/**
+ * Delete a message (soft delete)
+ */
+export const deleteMessage = async (messageId: string, userId: string): Promise<void> => {
+  if (!db) throw new Error("Firestore is not initialized");
 
-  const conversationRef = doc(db, "conversations", conversationId);
-  const conversationDoc = await getDoc(conversationRef);
+  const messageRef = doc(db, "messages", messageId);
+  const messageSnap = await getDoc(messageRef);
   
-  if (conversationDoc.exists()) {
-    const data = conversationDoc.data();
-    const pinnedBy = data.pinnedBy || [];
-    
-    if (isPinned) {
-      if (!pinnedBy.includes(userId)) {
-        pinnedBy.push(userId);
-      }
-    } else {
-      const index = pinnedBy.indexOf(userId);
-      if (index > -1) {
-        pinnedBy.splice(index, 1);
-      }
-    }
-    
-    await updateDoc(conversationRef, { pinnedBy });
+  if (!messageSnap.exists()) {
+    throw new Error("Message not found");
   }
-};
-
-// Archive/Unarchive conversation
-export const toggleArchiveConversation = async (
-  conversationId: string,
-  userId: string,
-  isArchived: boolean
-): Promise<void> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
-
-  const conversationRef = doc(db, "conversations", conversationId);
-  const conversationDoc = await getDoc(conversationRef);
   
-  if (conversationDoc.exists()) {
-    const data = conversationDoc.data();
-    const archivedBy = data.archivedBy || [];
-    
-    if (isArchived) {
-      if (!archivedBy.includes(userId)) {
-        archivedBy.push(userId);
-      }
-    } else {
-      const index = archivedBy.indexOf(userId);
-      if (index > -1) {
-        archivedBy.splice(index, 1);
-      }
-    }
-    
-    await updateDoc(conversationRef, { archivedBy });
-  }
-};
-
-// Mute/Unmute conversation
-export const toggleMuteConversation = async (
-  conversationId: string,
-  userId: string,
-  isMuted: boolean
-): Promise<void> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
+  const messageData = messageSnap.data();
+  if (messageData.senderId !== userId) {
+    throw new Error("You can only delete your own messages");
   }
 
-  const conversationRef = doc(db, "conversations", conversationId);
-  const conversationDoc = await getDoc(conversationRef);
-  
-  if (conversationDoc.exists()) {
-    const data = conversationDoc.data();
-    const mutedBy = data.mutedBy || [];
-    
-    if (isMuted) {
-      if (!mutedBy.includes(userId)) {
-        mutedBy.push(userId);
-      }
-    } else {
-      const index = mutedBy.indexOf(userId);
-      if (index > -1) {
-        mutedBy.splice(index, 1);
-      }
-    }
-    
-    await updateDoc(conversationRef, { mutedBy });
-  }
-};
-
-// Delete message (soft delete)
-export const deleteMessage = async (messageId: string): Promise<void> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
-
-  await updateDoc(doc(db, "messages", messageId), {
+  await updateDoc(messageRef, {
     deleted: true,
     content: "This message was deleted",
+    deletedAt: serverTimestamp(),
   });
 };
 
-// Block user
+// ============================================
+// BLOCK USER FUNCTIONS
+// ============================================
+
+/**
+ * Block a user
+ */
 export const blockUser = async (blockerId: string, blockedUserId: string): Promise<void> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
+  if (!db) throw new Error("Firestore is not initialized");
+
+  // Check if already blocked
+  const existing = await isUserBlocked(blockerId, blockedUserId);
+  if (existing) return;
 
   await addDoc(collection(db, "blockedUsers"), {
     blockerId,
@@ -467,46 +402,47 @@ export const blockUser = async (blockerId: string, blockedUserId: string): Promi
   });
 };
 
-// Unblock user
+/**
+ * Unblock a user
+ */
 export const unblockUser = async (blockerId: string, blockedUserId: string): Promise<void> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
+  if (!db) throw new Error("Firestore is not initialized");
 
   const q = query(
     collection(db, "blockedUsers"),
     where("blockerId", "==", blockerId),
     where("blockedUserId", "==", blockedUserId)
   );
-  
+
   const snapshot = await getDocs(q);
-  const promises = snapshot.docs.map((docSnap) =>
-    updateDoc(doc(db!, "blockedUsers", docSnap.id), {
-      unblocked: true,
-      unblockedAt: serverTimestamp(),
-    })
+  await Promise.all(
+    snapshot.docs.map((docSnap) => deleteDoc(doc(db!, "blockedUsers", docSnap.id)))
   );
-  await Promise.all(promises);
 };
 
-// Check if user is blocked
-export const isUserBlocked = async (userId: string, otherUserId: string): Promise<boolean> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
+/**
+ * Check if a user is blocked
+ */
+export const isUserBlocked = async (blockerId: string, blockedUserId: string): Promise<boolean> => {
+  if (!db) throw new Error("Firestore is not initialized");
 
   const q = query(
     collection(db, "blockedUsers"),
-    where("blockerId", "==", userId),
-    where("blockedUserId", "==", otherUserId),
-    where("unblocked", "!=", true)
+    where("blockerId", "==", blockerId),
+    where("blockedUserId", "==", blockedUserId)
   );
-  
+
   const snapshot = await getDocs(q);
   return !snapshot.empty;
 };
 
-// Report conversation
+// ============================================
+// REPORT FUNCTIONS
+// ============================================
+
+/**
+ * Report a conversation/user
+ */
 export const reportConversation = async (
   conversationId: string,
   reporterId: string,
@@ -514,9 +450,7 @@ export const reportConversation = async (
   reason: string,
   description?: string
 ): Promise<void> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
+  if (!db) throw new Error("Firestore is not initialized");
 
   await addDoc(collection(db, "chatReports"), {
     conversationId,
@@ -529,60 +463,15 @@ export const reportConversation = async (
   });
 };
 
-// Clear conversation history
-export const clearConversationHistory = async (
-  conversationId: string,
-  userId: string
-): Promise<void> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
+// ============================================
+// UNREAD COUNT FUNCTIONS
+// ============================================
 
-  const conversationRef = doc(db, "conversations", conversationId);
-  const conversationDoc = await getDoc(conversationRef);
-  
-  if (conversationDoc.exists()) {
-    const data = conversationDoc.data();
-    const clearedBy = data.clearedBy || {};
-    clearedBy[userId] = serverTimestamp();
-    
-    await updateDoc(conversationRef, { clearedBy });
-  }
-};
-
-// Helper function to find a message document reference across all conversations
-export const findMessageInConversations = async (
-  messageId: string
-): Promise<{ conversationId: string; messageRef: any } | null> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
-
-  try {
-    // Query messages collection directly by ID
-    const messageRef = doc(db, "messages", messageId);
-    const messageSnap = await getDoc(messageRef);
-
-    if (messageSnap.exists()) {
-      const messageData = messageSnap.data() as any;
-      return {
-        conversationId: messageData.conversationId,
-        messageRef,
-      };
-    }
-
-    return null;
-  } catch (error) {
-    console.error("Error finding message:", error);
-    return null;
-  }
-};
-
-// Get total unread message count for a user
+/**
+ * Get unread message count for a user
+ */
 export const getUnreadMessageCount = async (userId: string): Promise<number> => {
-  if (!db) {
-    throw new Error("Firestore is not initialized");
-  }
+  if (!db) throw new Error("Firestore is not initialized");
 
   try {
     const q = query(
@@ -590,7 +479,6 @@ export const getUnreadMessageCount = async (userId: string): Promise<number> => 
       where("receiverId", "==", userId),
       where("read", "==", false)
     );
-
     const snapshot = await getDocs(q);
     return snapshot.size;
   } catch (error) {
@@ -599,13 +487,16 @@ export const getUnreadMessageCount = async (userId: string): Promise<number> => 
   }
 };
 
-// Subscribe to unread message count changes
+/**
+ * Subscribe to unread count changes
+ */
 export const subscribeToUnreadCount = (
   userId: string,
   callback: (count: number) => void
 ): (() => void) => {
   if (!db) {
-    throw new Error("Firestore is not initialized");
+    callback(0);
+    return () => {};
   }
 
   const q = query(
@@ -614,17 +505,68 @@ export const subscribeToUnreadCount = (
     where("read", "==", false)
   );
 
-  const unsubscribe = onSnapshot(
+  return onSnapshot(
     q,
-    (snapshot) => {
-      callback(snapshot.size);
-    },
+    (snapshot) => callback(snapshot.size),
     (error) => {
       console.error("Error subscribing to unread count:", error);
       callback(0);
     }
   );
-
-  return unsubscribe;
 };
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+function parseConversation(id: string, data: DocumentData): Conversation {
+  return {
+    id,
+    participants: data.participants || [],
+    pinnedBy: data.pinnedBy || [],
+    archivedBy: data.archivedBy || [],
+    mutedBy: data.mutedBy || [],
+    clearedBy: data.clearedBy || {},
+    lastMessage: data.lastMessage
+      ? {
+          ...data.lastMessage,
+          timestamp: data.lastMessage.timestamp?.toDate() || new Date(),
+        }
+      : undefined,
+    createdAt: data.createdAt?.toDate() || new Date(),
+    updatedAt: data.updatedAt?.toDate() || new Date(),
+  };
+}
+
+function parseMessage(id: string, data: DocumentData): ChatMessage {
+  return {
+    id,
+    conversationId: data.conversationId,
+    senderId: data.senderId,
+    receiverId: data.receiverId,
+    content: data.content,
+    read: data.read || false,
+    messageType: data.messageType || "text",
+    status: data.status,
+    timestamp: data.timestamp?.toDate() || new Date(),
+    deliveredAt: data.deliveredAt?.toDate(),
+    readAt: data.readAt?.toDate(),
+    mediaUrl: data.mediaUrl,
+    mediaType: data.mediaType,
+    mediaSize: data.mediaSize,
+    thumbnailUrl: data.thumbnailUrl,
+    duration: data.duration,
+    linkPreview: data.linkPreview,
+    reactions: data.reactions,
+    replyTo: data.replyTo,
+    forwarded: data.forwarded,
+    forwardedFrom: data.forwardedFrom,
+    originalMessageId: data.originalMessageId,
+    edited: data.edited,
+    editedAt: data.editedAt?.toDate(),
+    deleted: data.deleted,
+    starred: data.starred,
+    lastStarredAt: data.lastStarredAt?.toDate(),
+  };
+}
 

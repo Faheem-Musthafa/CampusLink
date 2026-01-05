@@ -9,6 +9,7 @@ import { useVerificationGuard } from "@/hooks/use-verification-guard";
 import { getUserData } from "@/lib/firebase/auth";
 import { getUserProfile } from "@/lib/firebase/profiles";
 import { createMentorshipRequest, checkExistingRequest } from "@/lib/firebase/mentorship";
+import { createUserReport } from "@/lib/firebase/reports";
 import { useEffect, useState } from "react";
 import { User, UserProfile } from "@/types";
 import { useParams, useRouter } from "next/navigation";
@@ -32,13 +33,18 @@ import {
   ExternalLink,
   ArrowLeft,
   UserPlus,
+  Flag,
+  AlertTriangle,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 export default function PublicProfilePage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const userId = params.userId as string;
   const { user: currentUser, loading: authLoading } = useVerificationGuard();
   const [currentUserData, setCurrentUserData] = useState<User | null>(null);
@@ -49,6 +55,21 @@ export default function PublicProfilePage() {
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [requestMessage, setRequestMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  
+  // Report user state
+  const [showReportDialog, setShowReportDialog] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDescription, setReportDescription] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+
+  const reportReasons = [
+    "Harassment or bullying",
+    "Spam or misleading",
+    "Inappropriate content",
+    "Fake account",
+    "Impersonation",
+    "Other",
+  ];
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -109,6 +130,53 @@ export default function PublicProfilePage() {
 
   const handleSendMessage = () => {
     router.push(`/chat?userId=${userId}`);
+  };
+
+  // Helper function to ensure URLs have https:// prefix
+  const formatUrl = (url: string, defaultDomain?: string): string => {
+    if (!url) return "";
+    // If it's just a username (no dots or slashes), construct full URL
+    if (defaultDomain && !url.includes('.') && !url.includes('/')) {
+      return `https://${defaultDomain}/${url}`;
+    }
+    // If URL doesn't start with http:// or https://, add https://
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return `https://${url}`;
+    }
+    return url;
+  };
+
+  const handleReportUser = async () => {
+    if (!currentUser || !currentUserData || !profileUser || !reportReason) return;
+
+    setReportSubmitting(true);
+    try {
+      await createUserReport({
+        reportedUserId: profileUser.id,
+        reportedUserName: profileUser.displayName || "Unknown",
+        reportedBy: currentUser.uid,
+        reporterName: currentUserData.displayName || "Unknown",
+        reason: reportReason,
+        description: reportDescription.trim(),
+      });
+
+      toast({
+        title: "Report Submitted",
+        description: "Thank you for reporting. Our team will review this.",
+      });
+      setShowReportDialog(false);
+      setReportReason("");
+      setReportDescription("");
+    } catch (error) {
+      console.error("Error reporting user:", error);
+      toast({
+        title: "Error",
+        description: "Failed to submit report. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setReportSubmitting(false);
+    }
   };
 
   if (loading || authLoading) {
@@ -214,7 +282,7 @@ export default function PublicProfilePage() {
 
               {/* Action Buttons */}
               {!isOwnProfile && (
-                <div className="flex gap-2 justify-center md:justify-end">
+                <div className="flex gap-2 justify-center md:justify-end flex-wrap">
                   <Button
                     variant="outline"
                     onClick={handleSendMessage}
@@ -243,6 +311,15 @@ export default function PublicProfilePage() {
                       )}
                     </Button>
                   )}
+
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowReportDialog(true)}
+                    className="rounded-full text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
+                  >
+                    <Flag className="mr-2 h-4 w-4" />
+                    Report
+                  </Button>
                 </div>
               )}
 
@@ -421,7 +498,7 @@ export default function PublicProfilePage() {
                 <CardContent className="space-y-3">
                   {profileData.linkedIn && (
                     <a
-                      href={profileData.linkedIn.startsWith('http') ? profileData.linkedIn : `https://${profileData.linkedIn}`}
+                      href={formatUrl(profileData.linkedIn, 'linkedin.com/in')}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-blue-50 transition-colors group"
@@ -439,7 +516,7 @@ export default function PublicProfilePage() {
 
                   {profileData.github && (
                     <a
-                      href={profileData.github.startsWith('http') ? profileData.github : `https://${profileData.github}`}
+                      href={formatUrl(profileData.github, 'github.com')}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group"
@@ -457,7 +534,7 @@ export default function PublicProfilePage() {
 
                   {profileData.portfolio && (
                     <a
-                      href={profileData.portfolio.startsWith('http') ? profileData.portfolio : `https://${profileData.portfolio}`}
+                      href={formatUrl(profileData.portfolio)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-purple-50 transition-colors group"
@@ -475,7 +552,7 @@ export default function PublicProfilePage() {
 
                   {profileData.instagram && (
                     <a
-                      href={profileData.instagram.startsWith('http') ? profileData.instagram : `https://instagram.com/${profileData.instagram}`}
+                      href={formatUrl(profileData.instagram, 'instagram.com')}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-pink-50 transition-colors group"
@@ -585,6 +662,102 @@ export default function PublicProfilePage() {
                     <>
                       <UserPlus className="mr-2 h-4 w-4" />
                       Send Request
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Report User Dialog */}
+        <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+                Report User
+              </DialogTitle>
+              <DialogDescription>
+                Report {profileUser.displayName} for violating community guidelines
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-red-50">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={profileUser.photoURL || undefined} />
+                  <AvatarFallback className="bg-red-100 text-red-600 font-bold">
+                    {profileUser.displayName?.charAt(0) || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-semibold">{profileUser.displayName}</p>
+                  <p className="text-sm text-gray-600">
+                    {profileUser.email}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <Label className="block text-sm font-medium mb-2">
+                  Reason for reporting *
+                </Label>
+                <select
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Select a reason</option>
+                  {reportReasons.map((reason) => (
+                    <option key={reason} value={reason}>
+                      {reason}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <Label className="block text-sm font-medium mb-2">
+                  Additional details (optional)
+                </Label>
+                <Textarea
+                  placeholder="Provide more context about your report..."
+                  value={reportDescription}
+                  onChange={(e) => setReportDescription(e.target.value)}
+                  rows={4}
+                  maxLength={1000}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {reportDescription.length}/1000 characters
+                </p>
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowReportDialog(false);
+                    setReportReason("");
+                    setReportDescription("");
+                  }}
+                  disabled={reportSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleReportUser}
+                  disabled={reportSubmitting || !reportReason}
+                  variant="destructive"
+                >
+                  {reportSubmitting ? (
+                    <>
+                      <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Flag className="mr-2 h-4 w-4" />
+                      Submit Report
                     </>
                   )}
                 </Button>

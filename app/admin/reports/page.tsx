@@ -118,11 +118,13 @@ export default function ReportsPage() {
 
     setSubmitting(true);
     try {
+      // Pass the collection name to update the correct document
       await updateReportStatus(
         selectedReport.id,
         reviewAction,
         adminUsername,
-        actionNote
+        actionNote,
+        selectedReport.collection || "userReports"
       );
 
       // Log admin activity
@@ -409,6 +411,11 @@ export default function ReportsPage() {
                         <td className="py-4 px-4">
                           <div className="text-white font-medium">{report.reason}</div>
                           <div className="text-gray-400 text-xs line-clamp-1">{report.description}</div>
+                          {report.type === "chat" && (
+                            <Badge variant="outline" className="mt-1 text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">
+                              From Chat
+                            </Badge>
+                          )}
                         </td>
                         <td className="py-4 px-4 text-gray-300 text-sm">
                           {formatDate(report.createdAt)}

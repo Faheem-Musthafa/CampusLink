@@ -45,23 +45,15 @@ if (typeof window !== "undefined") {
       db = getFirestore(app);
       storage = getStorage(app);
       
-      // Log configuration status (without sensitive data)
-      console.log("Firebase initialized successfully", {
-        projectId: firebaseConfig.projectId,
-        authDomain: firebaseConfig.authDomain,
-        hasApiKey: !!firebaseConfig.apiKey,
-      });
+      // Only log in development
+      if (process.env.NODE_ENV === "development") {
+        console.log("Firebase initialized successfully");
+      }
     } catch (error) {
       console.error("Firebase initialization error:", error);
-      console.error("Current config:", {
-        projectId: firebaseConfig.projectId,
-        authDomain: firebaseConfig.authDomain,
-        hasApiKey: !!firebaseConfig.apiKey,
-        hasAppId: !!firebaseConfig.appId,
-      });
     }
   } else {
-    console.error("Firebase configuration validation failed. Please check your .env.local file.");
+    console.error("Firebase configuration validation failed.");
   }
 }
 

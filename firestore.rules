@@ -78,11 +78,12 @@ service cloud.firestore {
       );
       allow list: if isAuthenticated(); // Allow querying, filtered by where clause
       allow create: if isAuthenticated() && request.auth.uid == request.resource.data.senderId;
+      // Allow sender to update their own messages (edit, delete, star) or receiver to mark as read/delivered/star
       allow update: if isAuthenticated() && (
         request.auth.uid == resource.data.senderId ||
         request.auth.uid == resource.data.receiverId
       );
-      allow delete: if false;
+      allow delete: if false; // Only soft delete via update
     }
     
     // Job postings
@@ -149,7 +150,7 @@ service cloud.firestore {
       );
       allow create: if isAuthenticated() && request.auth.uid == request.resource.data.blockerId;
       allow update: if isAuthenticated() && request.auth.uid == resource.data.blockerId;
-      allow delete: if false;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.blockerId;
     }
     
     // Chat reports

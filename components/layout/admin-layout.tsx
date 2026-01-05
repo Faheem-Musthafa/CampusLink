@@ -92,54 +92,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             <span className="text-xl font-semibold text-white">AlumniLink</span>
           </Link>
 
-          {/* Top Navigation */}
-          <nav className="flex items-center gap-1">
-            <Link href="/admin">
-              <Button
-                variant="ghost"
-                className={cn(
-                  "text-gray-400 hover:text-white hover:bg-gray-800/50",
-                  pathname === "/admin" && "text-white bg-gray-800/50"
-                )}
-              >
-                Overview
-              </Button>
-            </Link>
-            <Link href="/admin/users">
-              <Button
-                variant="ghost"
-                className={cn(
-                  "text-gray-400 hover:text-white hover:bg-gray-800/50",
-                  pathname?.startsWith("/admin/users") && "text-white bg-gray-800/50"
-                )}
-              >
-                Users
-              </Button>
-            </Link>
-            <Link href="/admin/verifications">
-              <Button
-                variant="ghost"
-                className={cn(
-                  "text-gray-400 hover:text-white hover:bg-gray-800/50",
-                  pathname?.startsWith("/admin/verifications") && "text-white bg-gray-800/50"
-                )}
-              >
-                Verifications
-              </Button>
-            </Link>
-            <Link href="/admin/activity-logs">
-              <Button
-                variant="ghost"
-                className={cn(
-                  "text-gray-400 hover:text-white hover:bg-gray-800/50",
-                  pathname?.startsWith("/admin/activity-logs") && "text-white bg-gray-800/50"
-                )}
-              >
-                Activity
-              </Button>
-            </Link>
-          </nav>
-
           {/* User Menu */}
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-400">Welcome, <span className="text-white font-medium">{adminUsername || "admin"}</span></span>

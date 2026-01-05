@@ -87,7 +87,6 @@ export default function SettingsPage() {
 
 
   const tabs = [
-    { id: 'profile', icon: User, label: 'Profile', description: 'Manage your personal information' },
     { id: 'notifications', icon: Bell, label: 'Notifications', description: 'Configure alerts' },
     { id: 'privacy', icon: Shield, label: 'Privacy', description: 'Control your data' }
   ];
@@ -128,116 +127,6 @@ export default function SettingsPage() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'profile':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Profile Settings</h2>
-              <p className="text-gray-600">Update your personal information and profile details</p>
-            </div>
-            
-            <div className="grid gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Bio
-                </label>
-                <textarea
-                  value={settings.bio}
-                  onChange={(e) => setSettings(prev => ({ ...prev, bio: e.target.value }))}
-                  rows={4}
-                  maxLength={300}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
-                  placeholder="Tell us about yourself..."
-                />
-                <div className="flex justify-between items-center mt-1">
-                  <p className="text-xs text-gray-500">Brief description for your profile</p>
-                  <p className="text-xs text-gray-500">{settings.bio.length}/300</p>
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Location
-                  </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      value={settings.location}
-                      onChange={(e) => setSettings(prev => ({ ...prev, location: e.target.value }))}
-                      className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="City, State"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    LinkedIn Profile
-                  </label>
-                  <div className="relative">
-                    <Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="url"
-                      value={settings.linkedIn}
-                      onChange={(e) => setSettings(prev => ({ ...prev, linkedIn: e.target.value }))}
-                      className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="linkedin.com/in/username"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Academic Information */}
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Academic Information</h3>
-                
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      College/University
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.college}
-                      onChange={(e) => setSettings(prev => ({ ...prev, college: e.target.value }))}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="Your college"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Specialization
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.specialization}
-                      onChange={(e) => setSettings(prev => ({ ...prev, specialization: e.target.value }))}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="e.g., Computer Science, Electronics"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Graduation Year
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.graduationYear}
-                      onChange={(e) => setSettings(prev => ({ ...prev, graduationYear: e.target.value }))}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="e.g., 2024"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
       case 'notifications':
         return (
           <div className="space-y-6">

@@ -84,6 +84,8 @@ export const submitVerificationRequest = async (params: SubmitVerificationReques
     // Update user's verification status and mark onboarding as complete
     const userRef = doc(firestore, "users", params.userId);
     await updateDoc(userRef, {
+      // Persist the selected role so dashboard/guards use the new value right after onboarding
+      role: params.userRole,
       verificationStatus: params.verificationType === "phone_otp" ? "approved" : "pending",
       phoneNumber: params.phoneNumber || null,
       phoneVerified: params.verificationType === "phone_otp",

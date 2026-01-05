@@ -3,6 +3,7 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   sendEmailVerification,
+  sendPasswordResetEmail,
   updateProfile,
   User as FirebaseUser,
   onAuthStateChanged,
@@ -137,6 +138,32 @@ export const signIn = async (email: string, password: string): Promise<FirebaseU
   }
 };
 
+export const sendPasswordReset = async (email: string): Promise<void> => {
+  if (!auth) {
+    throw new Error("Firebase is not initialized. Please check your environment variables.");
+  }
+
+  if (!email || !email.includes("@")) {
+    throw new Error("Please enter a valid email address");
+  }
+
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (error: any) {
+    let errorMessage = "Failed to send reset email. ";
+    if (error.code === "auth/user-not-found") {
+      errorMessage += "No account found with this email.";
+    } else if (error.code === "auth/invalid-email") {
+      errorMessage += "Please enter a valid email address.";
+    } else if (error.code === "auth/network-request-failed") {
+      errorMessage += "Network error. Please try again.";
+    } else {
+      errorMessage += error.message || "An unknown error occurred.";
+    }
+    throw new Error(errorMessage);
+  }
+};
+
 export const signOut = async (): Promise<void> => {
   if (!auth) {
     throw new Error("Firebase is not initialized. Please check your environment variables.");
@@ -188,9 +215,20 @@ export const getUserData = async (userId: string): Promise<User | null> => {
 export const handleAuthRedirect = async (): Promise<{ user: FirebaseUser; isNewUser: boolean } | null> => {
   if (!auth) return null;
   
+  // Quick check - only process if there's a pending redirect
+  // This prevents unnecessary network calls on every page load
+  const pendingRole = typeof window !== 'undefined' ? sessionStorage.getItem('pendingAuthRole') : null;
+  if (!pendingRole) {
+    // No pending redirect, return early
+    return null;
+  }
+  
   try {
     const result = await getRedirectResult(auth);
     if (result?.user) {
+      // Clear the pending role
+      sessionStorage.removeItem('pendingAuthRole');
+      
       // Check if this is a new user
       let isNewUser = false;
       if (db) {
@@ -201,8 +239,11 @@ export const handleAuthRedirect = async (): Promise<{ user: FirebaseUser; isNewU
     }
     return null;
   } catch (error: any) {
-    console.error("Redirect auth error:", error);
-    throw new Error(error.message || "Failed to complete sign in");
+    // Silently handle redirect errors - don't throw
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Redirect auth error:", error);
+    }
+    return null;
   }
 };
 

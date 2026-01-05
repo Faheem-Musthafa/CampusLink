@@ -4,7 +4,7 @@
  * Get your API key from: https://api.imgbb.com/
  */
 
-const IMGBB_API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY || "YOUR_API_KEY_HERE";
+const IMGBB_API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
 const IMGBB_UPLOAD_URL = "https://api.imgbb.com/1/upload";
 
 export interface ImgBBUploadResponse {
@@ -25,6 +25,10 @@ export interface ImgBBUploadResponse {
 
 export async function uploadToImgBB(file: File): Promise<string> {
   try {
+    if (!IMGBB_API_KEY || IMGBB_API_KEY === "YOUR_API_KEY_HERE") {
+      throw new Error("ImgBB API key missing. Set NEXT_PUBLIC_IMGBB_API_KEY in .env");
+    }
+
     // Convert file to base64
     const base64 = await fileToBase64(file);
     
@@ -40,19 +44,21 @@ export async function uploadToImgBB(file: File): Promise<string> {
     });
 
     if (!response.ok) {
-      throw new Error(`Upload failed: ${response.statusText}`);
+      const text = await response.text();
+      throw new Error(`Upload failed: ${response.status} ${response.statusText} ${text}`.trim());
     }
 
     const result: ImgBBUploadResponse = await response.json();
 
     if (!result.success) {
-      throw new Error("Upload failed");
+      throw new Error("Upload failed: ImgBB returned success=false");
     }
 
     return result.data.display_url;
   } catch (error) {
     console.error("ImgBB upload error:", error);
-    throw new Error("Failed to upload image");
+    const message = error instanceof Error ? error.message : "Failed to upload image";
+    throw new Error(message);
   }
 }
 

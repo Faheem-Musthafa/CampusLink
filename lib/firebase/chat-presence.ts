@@ -16,17 +16,22 @@ export const setTypingStatus = async (
   userId: string,
   isTyping: boolean
 ): Promise<void> => {
-  if (!db) throw new Error("Firestore is not initialized");
+  if (!db) return; // Gracefully handle missing db
 
-  const typingRef = doc(db, "conversations", conversationId, "typing", userId);
-  
-  if (isTyping) {
-    await setDoc(typingRef, {
-      isTyping: true,
-      lastTyped: serverTimestamp(),
-    });
-  } else {
-    await deleteDoc(typingRef);
+  try {
+    const typingRef = doc(db, "conversations", conversationId, "typing", userId);
+    
+    if (isTyping) {
+      await setDoc(typingRef, {
+        isTyping: true,
+        lastTyped: serverTimestamp(),
+      });
+    } else {
+      await deleteDoc(typingRef);
+    }
+  } catch (error) {
+    // Silently fail - typing indicator is non-critical
+    console.warn("Failed to update typing status:", error);
   }
 };
 
@@ -35,32 +40,47 @@ export const subscribeToTyping = (
   currentUserId: string,
   callback: (isTyping: boolean, userId?: string) => void
 ): (() => void) => {
-  if (!db) throw new Error("Firestore is not initialized");
+  if (!db) {
+    console.warn("Firestore not initialized for typing subscription");
+    return () => {};
+  }
 
-  const typingCollectionRef = collection(db, "conversations", conversationId, "typing");
-  
-  return onSnapshot(typingCollectionRef, (snapshot) => {
-    // Filter out current user's typing status
-    const otherUsersTyping = snapshot.docs.filter(doc => doc.id !== currentUserId);
+  try {
+    const typingCollectionRef = collection(db, "conversations", conversationId, "typing");
     
-    if (otherUsersTyping.length > 0) {
-      const typingUser = otherUsersTyping[0];
-      const data = typingUser.data();
-      
-      // Check if typing was within last 3 seconds
-      const lastTyped = data.lastTyped?.toDate();
-      const now = new Date();
-      const diffInSeconds = (now.getTime() - lastTyped?.getTime()) / 1000;
-      
-      if (diffInSeconds < 3) {
-        callback(true, typingUser.id);
-      } else {
+    return onSnapshot(
+      typingCollectionRef,
+      (snapshot) => {
+        // Filter out current user's typing status
+        const otherUsersTyping = snapshot.docs.filter(doc => doc.id !== currentUserId);
+        
+        if (otherUsersTyping.length > 0) {
+          const typingUser = otherUsersTyping[0];
+          const data = typingUser.data();
+          
+          // Check if typing was within last 3 seconds
+          const lastTyped = data.lastTyped?.toDate();
+          const now = new Date();
+          const diffInSeconds = lastTyped ? (now.getTime() - lastTyped.getTime()) / 1000 : Infinity;
+          
+          if (diffInSeconds < 3) {
+            callback(true, typingUser.id);
+          } else {
+            callback(false);
+          }
+        } else {
+          callback(false);
+        }
+      },
+      (error) => {
+        console.warn("Typing subscription error:", error);
         callback(false);
       }
-    } else {
-      callback(false);
-    }
-  });
+    );
+  } catch (error) {
+    console.warn("Failed to subscribe to typing:", error);
+    return () => {};
+  }
 };
 
 // Online/Offline presence
@@ -68,38 +88,63 @@ export const setUserPresence = async (
   userId: string,
   status: "online" | "away" | "offline"
 ): Promise<void> => {
-  if (!db) throw new Error("Firestore is not initialized");
+  if (!db) return; // Gracefully handle missing db
 
-  const presenceRef = doc(db, "userPresence", userId);
-  
-  await setDoc(presenceRef, {
-    status,
-    lastSeen: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  }, { merge: true });
+  try {
+    const presenceRef = doc(db, "userPresence", userId);
+    
+    await setDoc(presenceRef, {
+      status,
+      lastSeen: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    // Silently fail - presence is non-critical
+    console.warn("Failed to update presence:", error);
+  }
 };
 
 export const subscribeToUserPresence = (
   userId: string,
   callback: (status: "online" | "away" | "offline", lastSeen?: Date) => void
 ): (() => void) => {
-  if (!db) throw new Error("Firestore is not initialized");
+  if (!db) {
+    console.warn("Firestore not initialized for presence subscription");
+    callback("offline");
+    return () => {};
+  }
 
-  const presenceRef = doc(db, "userPresence", userId);
-  
-  return onSnapshot(presenceRef, (snapshot) => {
-    if (snapshot.exists()) {
-      const data = snapshot.data();
-      callback(data.status, data.lastSeen?.toDate());
-    } else {
-      callback("offline");
-    }
-  });
+  try {
+    const presenceRef = doc(db, "userPresence", userId);
+    
+    return onSnapshot(
+      presenceRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          callback(data.status, data.lastSeen?.toDate());
+        } else {
+          callback("offline");
+        }
+      },
+      (error) => {
+        console.warn("Presence subscription error:", error);
+        callback("offline");
+      }
+    );
+  } catch (error) {
+    console.warn("Failed to subscribe to presence:", error);
+    callback("offline");
+    return () => {};
+  }
 };
 
 // Initialize presence on login
 export const initializePresence = (userId: string): (() => void) => {
-  if (!db) throw new Error("Firestore is not initialized");
+  if (!db) {
+    console.warn("Firestore not initialized for presence");
+    return () => {};
+  }
   
   // Set online immediately
   setUserPresence(userId, "online");
@@ -123,14 +168,18 @@ export const initializePresence = (userId: string): (() => void) => {
     }
   };
   
-  window.addEventListener("beforeunload", handleBeforeUnload);
-  document.addEventListener("visibilitychange", handleVisibilityChange);
+  if (typeof window !== "undefined") {
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+  }
   
   // Cleanup function
   return () => {
     clearInterval(intervalId);
-    window.removeEventListener("beforeunload", handleBeforeUnload);
-    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    }
     setUserPresence(userId, "offline");
   };
 };

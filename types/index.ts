@@ -220,6 +220,9 @@ export interface UserReport {
   reason: string;
   description: string;
   status: "pending" | "reviewed" | "resolved" | "dismissed";
+  type?: "user" | "chat"; // Type of report (from profile or chat)
+  collection?: "userReports" | "chatReports"; // Which Firestore collection
+  conversationId?: string; // Only for chat reports
   action?: string;
   reviewedBy?: string;
   reviewedAt?: Date;

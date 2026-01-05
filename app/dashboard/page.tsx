@@ -135,21 +135,19 @@ export default function DashboardPage() {
       const mentorshipsRef = collection(firestore, "mentorships");
       
       if (userData.role === "student" || userData.role === "aspirant") {
-        // Count active mentorships as mentee
-        const activeMentorshipsQuery = query(
-          mentorshipsRef,
-          where("menteeId", "==", user!.uid),
-          where("status", "==", "active")
-        );
-        const activeMentorshipsSnapshot = await getDocs(activeMentorshipsQuery);
-        
-        // Count pending requests
-        const pendingRequestsQuery = query(
-          mentorshipsRef,
-          where("menteeId", "==", user!.uid),
-          where("status", "==", "pending")
-        );
-        const pendingRequestsSnapshot = await getDocs(pendingRequestsQuery);
+        // Run queries in parallel for better performance
+        const [activeMentorshipsSnapshot, pendingRequestsSnapshot] = await Promise.all([
+          getDocs(query(
+            mentorshipsRef,
+            where("menteeId", "==", user!.uid),
+            where("status", "==", "active")
+          )),
+          getDocs(query(
+            mentorshipsRef,
+            where("menteeId", "==", user!.uid),
+            where("status", "==", "pending")
+          ))
+        ]);
 
         setMentorshipStats({
           activeMentorships: activeMentorshipsSnapshot.size,
@@ -157,28 +155,23 @@ export default function DashboardPage() {
           totalMentored: 0,
         });
       } else if (userData.role === "alumni" || userData.role === "mentor") {
-        // Count mentorships as mentor
-        const activeMentorshipsQuery = query(
-          mentorshipsRef,
-          where("mentorId", "==", user!.uid),
-          where("status", "==", "active")
-        );
-        const activeMentorshipsSnapshot = await getDocs(activeMentorshipsQuery);
-        
-        // Count pending requests
-        const pendingRequestsQuery = query(
-          mentorshipsRef,
-          where("mentorId", "==", user!.uid),
-          where("status", "==", "pending")
-        );
-        const pendingRequestsSnapshot = await getDocs(pendingRequestsQuery);
-
-        // Count total students mentored (including completed)
-        const allMentorshipsQuery = query(
-          mentorshipsRef,
-          where("mentorId", "==", user!.uid)
-        );
-        const allMentorshipsSnapshot = await getDocs(allMentorshipsQuery);
+        // Run queries in parallel for better performance
+        const [activeMentorshipsSnapshot, pendingRequestsSnapshot, allMentorshipsSnapshot] = await Promise.all([
+          getDocs(query(
+            mentorshipsRef,
+            where("mentorId", "==", user!.uid),
+            where("status", "==", "active")
+          )),
+          getDocs(query(
+            mentorshipsRef,
+            where("mentorId", "==", user!.uid),
+            where("status", "==", "pending")
+          )),
+          getDocs(query(
+            mentorshipsRef,
+            where("mentorId", "==", user!.uid)
+          ))
+        ]);
 
         setMentorshipStats({
           activeMentorships: activeMentorshipsSnapshot.size,
@@ -193,24 +186,49 @@ export default function DashboardPage() {
 
   const loadStudentData = async (firestore: Firestore) => {
     try {
-      // Load student applications
       const applicationsRef = collection(firestore, "jobApplications");
-      const applicationsQuery = query(
-        applicationsRef,
-        where("applicantId", "==", user!.uid),
-        orderBy("createdAt", "desc"),
-        limit(5)
-      );
-      const applicationsSnapshot = await getDocs(applicationsQuery);
+      const jobsRef = collection(firestore, "jobPostings");
+
+      // Run all main queries in parallel for better performance
+      const [applicationsSnapshot, allApplicationsSnapshot, jobsSnapshot, recentJobsSnapshot] = await Promise.all([
+        // Recent applications
+        getDocs(query(
+          applicationsRef,
+          where("applicantId", "==", user!.uid),
+          orderBy("createdAt", "desc"),
+          limit(5)
+        )),
+        // Count all applications
+        getDocs(query(
+          applicationsRef,
+          where("applicantId", "==", user!.uid)
+        )),
+        // Count available jobs
+        getDocs(query(
+          jobsRef, 
+          where("status", "==", "active"),
+          orderBy("createdAt", "desc"),
+          limit(100)
+        )),
+        // Recent jobs for display
+        getDocs(query(
+          jobsRef, 
+          where("status", "==", "active"),
+          orderBy("createdAt", "desc"),
+          limit(3)
+        ))
+      ]);
       
-      const apps: (JobApplication & { jobData?: JobPosting })[] = [];
-      for (const doc of applicationsSnapshot.docs) {
-        const appData = { ...doc.data(), id: doc.id } as JobApplication & { jobData?: JobPosting };
-        
-        // Fetch job details
+      // Process applications with job details (fetch in parallel)
+      const apps: (JobApplication & { jobData?: JobPosting })[] = applicationsSnapshot.docs.map((doc) => ({
+        ...doc.data(), 
+        id: doc.id
+      })) as (JobApplication & { jobData?: JobPosting })[];
+      
+      // Fetch job details in parallel
+      const jobDetailsPromises = apps.map(async (appData) => {
         try {
-          const jobRef = collection(firestore, "jobPostings");
-          const jobQuery = query(jobRef, where("__name__", "==", appData.jobId));
+          const jobQuery = query(jobsRef, where("__name__", "==", appData.jobId));
           const jobSnapshot = await getDocs(jobQuery);
           if (!jobSnapshot.empty) {
             const jobData = jobSnapshot.docs[0].data() as JobPosting;
@@ -218,47 +236,22 @@ export default function DashboardPage() {
             appData.jobData = jobData;
           }
         } catch (error) {
-          console.error("Error fetching job details:", error);
+          // Silently handle individual job fetch errors
         }
-        
-        apps.push(appData);
-      }
-      setRecentApplications(apps);
+        return appData;
+      });
       
-      // Count all applications
-      const allApplicationsQuery = query(
-        applicationsRef,
-        where("applicantId", "==", user!.uid)
-      );
-      const allApplicationsSnapshot = await getDocs(allApplicationsQuery);
+      const appsWithJobs = await Promise.all(jobDetailsPromises);
+      setRecentApplications(appsWithJobs);
       
+      // Set stats
       setStats((prev) => ({
         ...prev,
         applicationsCount: allApplicationsSnapshot.size,
-      }));
-
-      // Load available jobs
-      const jobsRef = collection(firestore, "jobPostings");
-      const jobsQuery = query(
-        jobsRef, 
-        where("status", "==", "active"),
-        orderBy("createdAt", "desc"),
-        limit(100)
-      );
-      const jobsSnapshot = await getDocs(jobsQuery);
-      setStats((prev) => ({
-        ...prev,
         jobsCount: jobsSnapshot.size,
       }));
 
-      // Load recent jobs for display
-      const recentJobsQuery = query(
-        jobsRef, 
-        where("status", "==", "active"),
-        orderBy("createdAt", "desc"),
-        limit(3)
-      );
-      const recentJobsSnapshot = await getDocs(recentJobsQuery);
+      // Process recent jobs
       const jobs: JobPosting[] = recentJobsSnapshot.docs.map((doc) => {
         const data = doc.data() as JobPosting;
         data.id = doc.id;
@@ -272,15 +265,23 @@ export default function DashboardPage() {
 
   const loadAlumniData = async (firestore: Firestore) => {
     try {
-      // Load alumni's posted jobs
       const jobsRef = collection(firestore, "jobPostings");
-      const myJobsQuery = query(
-        jobsRef, 
-        where("postedBy", "==", user!.uid),
-        orderBy("createdAt", "desc"),
-        limit(3)
-      );
-      const myJobsSnapshot = await getDocs(myJobsQuery);
+      const applicationsRef = collection(firestore, "jobApplications");
+      
+      // Run queries in parallel
+      const [myJobsSnapshot, allJobsSnapshot] = await Promise.all([
+        getDocs(query(
+          jobsRef, 
+          where("postedBy", "==", user!.uid),
+          orderBy("createdAt", "desc"),
+          limit(3)
+        )),
+        getDocs(query(
+          jobsRef,
+          where("postedBy", "==", user!.uid)
+        ))
+      ]);
+      
       const jobs: JobPosting[] = myJobsSnapshot.docs.map((doc) => {
         const data = doc.data() as JobPosting;
         data.id = doc.id;
@@ -288,32 +289,16 @@ export default function DashboardPage() {
       });
       setRecentJobs(jobs);
       
-      // Count all posted jobs
-      const allJobsQuery = query(
-        jobsRef,
-        where("postedBy", "==", user!.uid)
+      // Count total applications received (fetch in parallel)
+      const applicationPromises = jobs.map((job) => 
+        getDocs(query(applicationsRef, where("jobId", "==", job.id)))
       );
-      const allJobsSnapshot = await getDocs(allJobsQuery);
+      const applicationSnapshots = await Promise.all(applicationPromises);
+      const totalApplications = applicationSnapshots.reduce((sum, snap) => sum + snap.size, 0);
+      
       setStats((prev) => ({
         ...prev,
         jobsCount: allJobsSnapshot.size,
-      }));
-
-      // Count total applications received
-      const applicationsRef = collection(firestore, "jobApplications");
-      let totalApplications = 0;
-      
-      for (const job of jobs) {
-        const applicationsQuery = query(
-          applicationsRef,
-          where("jobId", "==", job.id)
-        );
-        const applicationsSnapshot = await getDocs(applicationsQuery);
-        totalApplications += applicationsSnapshot.size;
-      }
-      
-      setStats((prev) => ({
-        ...prev,
         applicationsCount: totalApplications,
       }));
     } catch (error: any) {

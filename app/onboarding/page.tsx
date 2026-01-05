@@ -207,11 +207,18 @@ export default function OnboardingPage() {
     }
 
     if (currentStep === 3 && formData.role === "alumni") {
-      if (!formData.company.trim()) {
-        newErrors.company = "Where do you work?";
+      const missingCompany = !formData.company.trim();
+      const missingDesignation = !formData.designation.trim();
+      const missingExperience = !formData.yearsOfExperience || formData.yearsOfExperience <= 0;
+
+      if (missingCompany || missingDesignation || missingExperience) {
+        if (missingCompany) newErrors.company = "Where do you work?";
+        if (missingDesignation) newErrors.designation = "What's your job title?";
+        if (missingExperience) newErrors.yearsOfExperience = "How many years have you worked?";
+
         toast({
           title: "Tell us about your work! 💼",
-          description: "Your current company helps students understand career paths",
+          description: "Company, title, and experience help students understand career paths",
         });
       }
     }
@@ -813,17 +820,21 @@ export default function OnboardingPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="designation">Job Title</Label>
+              <Label htmlFor="designation">Job Title *</Label>
               <Input
                 id="designation"
                 value={formData.designation}
                 onChange={(e) => updateField("designation", e.target.value)}
                 placeholder="Software Engineer..."
+                className={errors.designation ? "border-red-500" : ""}
               />
+              {errors.designation && (
+                <p className="text-destructive text-xs">{errors.designation}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="yearsOfExperience">Years of Experience</Label>
+              <Label htmlFor="yearsOfExperience">Years of Experience *</Label>
               <Input
                 id="yearsOfExperience"
                 type="number"
@@ -831,7 +842,11 @@ export default function OnboardingPage() {
                 value={formData.yearsOfExperience || ""}
                 onChange={(e) => updateField("yearsOfExperience", parseInt(e.target.value) || 0)}
                 placeholder="3"
+                className={errors.yearsOfExperience ? "border-red-500" : ""}
               />
+              {errors.yearsOfExperience && (
+                <p className="text-destructive text-xs">{errors.yearsOfExperience}</p>
+              )}
             </div>
           </div>
         </CardContent>

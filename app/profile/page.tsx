@@ -149,6 +149,20 @@ export default function ProfilePage() {
     return "text-red-600";
   };
 
+  // Helper function to ensure URLs have https:// prefix
+  const formatUrl = (url: string, defaultDomain?: string): string => {
+    if (!url) return "";
+    // If it's just a username (no dots or slashes), construct full URL
+    if (defaultDomain && !url.includes('.') && !url.includes('/')) {
+      return `https://${defaultDomain}/${url}`;
+    }
+    // If URL doesn't start with http:// or https://, add https://
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return `https://${url}`;
+    }
+    return url;
+  };
+
   const getStrengthBgColor = (percentage: number) => {
     if (percentage >= 80) return "bg-green-100";
     if (percentage >= 50) return "bg-blue-100";
@@ -677,25 +691,25 @@ export default function ProfilePage() {
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Connect</h3>
                     <div className="flex gap-2 flex-wrap">
                       {profile.linkedIn && (
-                        <a href={profile.linkedIn} target="_blank" rel="noopener noreferrer" 
+                        <a href={formatUrl(profile.linkedIn, 'linkedin.com/in')} target="_blank" rel="noopener noreferrer" 
                            className="p-2 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
                           <Linkedin className="h-5 w-5 text-blue-600" />
                         </a>
                       )}
                       {profile.github && (
-                        <a href={profile.github} target="_blank" rel="noopener noreferrer"
+                        <a href={formatUrl(profile.github, 'github.com')} target="_blank" rel="noopener noreferrer"
                            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
                           <Github className="h-5 w-5 text-gray-700" />
                         </a>
                       )}
                       {profile.portfolio && (
-                        <a href={profile.portfolio} target="_blank" rel="noopener noreferrer"
+                        <a href={formatUrl(profile.portfolio)} target="_blank" rel="noopener noreferrer"
                            className="p-2 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors">
                           <Globe className="h-5 w-5 text-purple-600" />
                         </a>
                       )}
                       {profile.instagram && (
-                        <a href={profile.instagram} target="_blank" rel="noopener noreferrer"
+                        <a href={formatUrl(profile.instagram, 'instagram.com')} target="_blank" rel="noopener noreferrer"
                            className="p-2 rounded-lg bg-pink-50 hover:bg-pink-100 transition-colors">
                           <Instagram className="h-5 w-5 text-pink-600" />
                         </a>
