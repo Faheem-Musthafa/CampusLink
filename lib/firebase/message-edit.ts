@@ -58,26 +58,19 @@ export async function editMessage(
   if (!db) throw new Error("Firestore is not initialized");
 
   try {
-    // Find the message
-    const { findMessageInConversations } = await import("./chat");
-    const conversationsRef = await findMessageInConversations(messageId);
-
-    if (!conversationsRef) {
-      throw new Error("Message not found");
-    }
-
-    const { messageRef } = conversationsRef;
+    // Get the message directly from messages collection
+    const messageRef = doc(db, "messages", messageId);
     const messageSnap = await getDoc(messageRef);
 
     if (!messageSnap.exists()) {
       throw new Error("Message not found");
     }
 
-    const messageData = messageSnap.data() as any;
+    const messageData = messageSnap.data();
 
     // Verify user can edit
     const { canEdit, reason } = canEditMessage(
-      messageData.timestamp?.toDate() || new Date(),
+      messageData.createdAt?.toDate() || messageData.timestamp?.toDate() || new Date(),
       messageData.senderId,
       userId
     );
@@ -87,7 +80,7 @@ export async function editMessage(
     }
 
     // Don't allow editing if content is the same
-    if (messageData.content.trim() === newContent.trim()) {
+    if (messageData.content?.trim() === newContent.trim()) {
       throw new Error("No changes made to message");
     }
 
@@ -120,21 +113,15 @@ export async function deleteMessageContent(
   if (!db) throw new Error("Firestore is not initialized");
 
   try {
-    const { findMessageInConversations } = await import("./chat");
-    const conversationsRef = await findMessageInConversations(messageId);
-
-    if (!conversationsRef) {
-      throw new Error("Message not found");
-    }
-
-    const { messageRef } = conversationsRef;
+    // Get the message directly from messages collection
+    const messageRef = doc(db, "messages", messageId);
     const messageSnap = await getDoc(messageRef);
 
     if (!messageSnap.exists()) {
       throw new Error("Message not found");
     }
 
-    const messageData = messageSnap.data() as any;
+    const messageData = messageSnap.data();
 
     // Verify user owns the message
     if (messageData.senderId !== userId) {

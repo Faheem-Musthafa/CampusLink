@@ -1,8 +1,6 @@
 import {
   doc,
   updateDoc,
-  arrayUnion,
-  arrayRemove,
   getDoc,
 } from "firebase/firestore";
 import { db } from "./config";
@@ -27,23 +25,15 @@ export async function addReaction(
   if (!db) throw new Error("Firestore is not initialized");
 
   try {
-    // Find the message in conversations
-    const conversationsRef = await import("./chat").then((m) =>
-      m.findMessageInConversations(messageId)
-    );
-
-    if (!conversationsRef) {
-      throw new Error("Message not found");
-    }
-
-    const { conversationId, messageRef } = conversationsRef;
+    // Get the message directly from messages collection
+    const messageRef = doc(db, "messages", messageId);
     const messageSnap = await getDoc(messageRef);
 
     if (!messageSnap.exists()) {
       throw new Error("Message not found");
     }
 
-    const messageData = messageSnap.data() as any;
+    const messageData = messageSnap.data();
     const reactions = messageData.reactions || {};
 
     // Check if user already reacted with this emoji
@@ -56,13 +46,6 @@ export async function addReaction(
     }
 
     // Add reaction
-    const reactionData = {
-      emoji,
-      userId,
-      userName,
-      timestamp: new Date(),
-    };
-
     const updatedReactions = {
       ...reactions,
       [emoji]: {
@@ -93,23 +76,15 @@ export async function removeReaction(
   if (!db) throw new Error("Firestore is not initialized");
 
   try {
-    const conversationsRef = await import("./chat").then((m) =>
-      m.findMessageInConversations(messageId)
-    );
-
-    if (!conversationsRef) {
-      throw new Error("Message not found");
-    }
-
-    const { messageRef } = conversationsRef;
+    const messageRef = doc(db, "messages", messageId);
     const messageSnap = await getDoc(messageRef);
 
     if (!messageSnap.exists()) {
       throw new Error("Message not found");
     }
 
-    const messageData = messageSnap.data() as any;
-    const reactions = messageData.reactions || {};
+    const messageData = messageSnap.data();
+    const reactions = { ...(messageData.reactions || {}) };
 
     if (!reactions[emoji]) {
       return; // No reaction to remove
@@ -148,22 +123,14 @@ export async function toggleReaction(
   if (!db) throw new Error("Firestore is not initialized");
 
   try {
-    const conversationsRef = await import("./chat").then((m) =>
-      m.findMessageInConversations(messageId)
-    );
-
-    if (!conversationsRef) {
-      throw new Error("Message not found");
-    }
-
-    const { messageRef } = conversationsRef;
+    const messageRef = doc(db, "messages", messageId);
     const messageSnap = await getDoc(messageRef);
 
     if (!messageSnap.exists()) {
       throw new Error("Message not found");
     }
 
-    const messageData = messageSnap.data() as any;
+    const messageData = messageSnap.data();
     const reactions = messageData.reactions || {};
 
     // Check if user already reacted with this emoji
@@ -187,22 +154,14 @@ export async function getMessageReactions(
   if (!db) throw new Error("Firestore is not initialized");
 
   try {
-    const conversationsRef = await import("./chat").then((m) =>
-      m.findMessageInConversations(messageId)
-    );
-
-    if (!conversationsRef) {
-      return {};
-    }
-
-    const { messageRef } = conversationsRef;
+    const messageRef = doc(db, "messages", messageId);
     const messageSnap = await getDoc(messageRef);
 
     if (!messageSnap.exists()) {
       return {};
     }
 
-    return (messageSnap.data() as any).reactions || {};
+    return messageSnap.data().reactions || {};
   } catch (error) {
     console.error("Error getting reactions:", error);
     return {};
