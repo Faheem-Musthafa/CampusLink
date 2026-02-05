@@ -447,7 +447,7 @@ export default function DashboardPage() {
                       <FileText className="h-8 w-8 text-blue-600" />
                     </div>
                     <p className="text-sm text-gray-600 text-center mb-3">
-                      You haven't applied to any jobs yet
+                      You haven&apos;t applied to any jobs yet
                     </p>
                     <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => router.push("/jobs")}>
                       Browse Jobs
@@ -484,7 +484,7 @@ export default function DashboardPage() {
                       <Briefcase className="h-8 w-8 text-green-600" />
                     </div>
                     <p className="text-sm text-gray-600 text-center mb-3">
-                      You haven't posted any jobs yet
+                      You haven&apos;t posted any jobs yet
                     </p>
                     <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => router.push("/jobs/create")}>
                       Post a Job

@@ -9,30 +9,47 @@ export interface User {
   role: UserRole;
   photoURL?: string;
   emailVerified: boolean;
-  
+
   // Verification
   verificationStatus?: VerificationStatus;
   verificationMethod?: 'id_card' | 'email' | 'phone';
   verificationSubmittedAt?: Date;
   verificationApprovedAt?: Date;
-  
+
   // Onboarding
   onboardingComplete?: boolean;
   onboardingStep?: number; // 1-4 (which step user is on)
   onboardingStartedAt?: Date;
   onboardingCompletedAt?: Date;
-  
+
   // Account Status
-  accountStatus?: 'active' | 'suspended' | 'deleted';
-  
+  accountStatus?: 'active' | 'suspended' | 'deleted' | 'auto_deactivated';
+
   // Contact
   phoneNumber?: string;
   phoneVerified?: boolean;
-  
+
   // Activity Tracking
   lastLoginAt?: Date;
   loginCount?: number;
-  
+
+  // Admission Verification (NEW)
+  admissionNumber?: string;
+  admissionVerified?: boolean;
+  admissionVerifiedAt?: Date;
+
+  // Feature Access Flags (NEW)
+  canPostJobs?: boolean;
+  canPostFeed?: boolean;
+  canMessage?: boolean;
+  canAcceptMentorship?: boolean;
+
+  // Auto-Deactivation Tracking (NEW)
+  autoDeactivatedAt?: Date;
+  deactivationReason?: string;
+  verificationDeadline?: Date;
+  deactivationWarningEmailSent?: boolean;
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -89,19 +106,19 @@ export interface ChatMessage {
   timestamp: Date;
   read: boolean;
   messageType: "text" | "file" | "voice" | "image" | "video" | "document" | "system";
-  
+
   // Delivery status
   status?: "sending" | "sent" | "delivered" | "read" | "failed";
   deliveredAt?: Date;
   readAt?: Date;
-  
+
   // Media
   mediaUrl?: string;
   mediaType?: string;
   mediaSize?: number;
   thumbnailUrl?: string;
   duration?: number; // for voice/video messages in seconds
-  
+
   // Link Preview
   linkPreview?: {
     url: string;
@@ -111,7 +128,7 @@ export interface ChatMessage {
     siteName?: string;
     favicon?: string;
   };
-  
+
   // Interactions
   reactions?: Record<string, { count: number; users: Array<{ userId: string; userName: string; timestamp: Date }> }>; // emoji: {count, users}
   replyTo?: string; // messageId of replied message
@@ -120,7 +137,7 @@ export interface ChatMessage {
   originalMessageId?: string; // original message ID for forwards
   edited?: boolean;
   editedAt?: Date;
-  
+
   // Metadata
   deleted?: boolean;
   starred?: string[]; // userIds who starred this message
@@ -199,7 +216,7 @@ export interface VerificationRequest {
   userName: string;
   userEmail: string;
   userRole: UserRole;
-  verificationType: "id_card" | "phone_otp";
+  verificationType: "id_card" | "phone_otp" | "email_otp";
   status: VerificationStatus;
   idCardUrl?: string;
   phoneNumber?: string;
@@ -241,32 +258,32 @@ export interface Post {
   authorRole?: UserRole;
   authorJobTitle?: string;
   authorCompany?: string;
-  
+
   // Content
   content: string;
   postType: PostType;
-  
+
   // Media
   images?: string[];
   thumbnails?: string[];
-  
+
   // Tags & Hashtags
   hashtags?: string[];
   mentions?: string[]; // userIds mentioned
-  
+
   // Engagement
   likesCount: number;
   commentsCount: number;
   sharesCount: number;
-  
+
   // Visibility
   visibility: "public" | "connections" | "college";
   college?: string; // For college-specific posts
-  
+
   // Status
   status: "active" | "hidden" | "deleted";
   isPinned?: boolean;
-  
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -289,16 +306,16 @@ export interface PostComment {
   authorName: string;
   authorPhotoURL?: string;
   authorRole?: UserRole;
-  
+
   content: string;
   parentCommentId?: string; // For nested replies
-  
+
   likesCount: number;
   repliesCount: number;
-  
+
   isEdited?: boolean;
   editedAt?: Date;
-  
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -311,3 +328,53 @@ export interface CommentLike {
   createdAt: Date;
 }
 
+// NEW: Alumni Verification Types
+export interface VerifiedAlumni {
+  admissionNumber: string;
+  fullName: string;
+  graduationYear: number;
+  course: string;
+  specialization?: string;
+  department?: string;
+  college: string;
+
+  isUsed: boolean;
+  claimedBy?: string;
+  claimedAt?: Date;
+
+  addedBy: string;
+  addedAt: Date;
+  updatedAt: Date;
+  notes?: string;
+}
+
+export interface AlumniFilters {
+  graduationYear?: number;
+  course?: string;
+  isUsed?: boolean;
+  searchQuery?: string;
+}
+
+export type AdmissionVerificationStatus =
+  | "not_found"
+  | "already_used"
+  | "valid"
+  | "name_mismatch"
+  | "year_mismatch"
+  | "year_corrected";
+
+export interface ValidationResult {
+  isValid: boolean;
+  status: AdmissionVerificationStatus;
+  message: string;
+  alumniData?: VerifiedAlumni;
+  suggestedName?: string;
+  correctedYear?: number;
+}
+
+export interface BulkImportResult {
+  total: number;
+  successful: number;
+  failed: number;
+  errors: Array<{ admissionNo: string; reason: string }>;
+}

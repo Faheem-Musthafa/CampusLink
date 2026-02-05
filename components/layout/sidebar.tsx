@@ -200,70 +200,44 @@ export function Sidebar() {
   const navItems = navigation[userRole] || navigation.student;
 
   return (
-    <div className="flex h-screen w-72 flex-col bg-white border-r border-gray-100 shadow-sm overflow-hidden">
-      {/* Premium Header - Static (no animation on pulse) */}
-      <div className="relative h-24 flex items-center px-6 border-b border-gray-100 overflow-hidden">
-        {/* Animated Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50"></div>
-        
-        <Link href="/dashboard" className="relative flex items-center gap-3 group z-10">
-          <div className="relative">
-            {/* Glow Effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl blur-md opacity-20 group-hover:opacity-40 transition-opacity"></div>
-            {/* Icon Container */}
-            <div className="relative h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all group-hover:scale-105">
-              <GraduationCap className="h-6 w-6 text-white" />
-            </div>
+    <div className="flex h-screen w-64 flex-col bg-card border-r border-border">
+      {/* Header */}
+      <div className="h-16 flex items-center px-4 border-b border-border">
+        <Link href="/dashboard" className="flex items-center gap-2.5">
+          <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center">
+            <GraduationCap className="h-5 w-5 text-primary-foreground" />
           </div>
-          <div>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              CampusLink
-            </h1>
-            <p className="text-xs text-gray-500 font-medium flex items-center gap-1">
-              <TrendingUp className="h-3 w-3" />
-              Connect & Grow
+          <span className="text-lg font-semibold tracking-tight">CampusLink</span>
+        </Link>
+      </div>
+
+      {/* User Card */}
+      <div className="p-3 border-b border-border">
+        <Link href="/profile" className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors">
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={user.photoURL || undefined} />
+            <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
+              {user.displayName?.charAt(0) || "U"}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">
+              {user.displayName || "User"}
             </p>
+            <p className="text-xs text-muted-foreground truncate capitalize">{userRole}</p>
           </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
       </div>
 
-      {/* Premium User Card */}
-      <div className="px-4 py-4 border-b border-gray-100">
-        <Link href="/profile" className="block">
-          <div className="relative group">
-            {/* Card Background with Gradient */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl opacity-60 group-hover:opacity-100 transition-opacity"></div>
-            
-            {/* Card Content */}
-            <div className="relative flex items-center gap-3 p-3 rounded-2xl">
-              <div className="relative">
-                <Avatar className="h-12 w-12 ring-2 ring-white shadow-lg group-hover:ring-blue-500 transition-all">
-                  <AvatarImage src={user.photoURL || undefined} />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm">
-                    {user.displayName?.charAt(0) || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                {/* Online Status */}
-                <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
-                  {user.displayName || "User"}
-                </p>
-                <p className="text-xs text-gray-500 truncate">{user.email}</p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-            </div>
-          </div>
-        </Link>
-      </div>
-
-      {/* Navigation with Enhanced Design */}
+      {/* Navigation */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto custom-scrollbar">
-        <div className="space-y-1.5">
-          {navItems.map((item, index) => {
+        <div className="space-y-1">
+          {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
+            const showBadge = item.dynamic ? unreadCount > 0 : item.badge && item.badge > 0;
+            const badgeCount = item.dynamic ? unreadCount : item.badge;
             
             return (
               <Link
@@ -271,110 +245,44 @@ export function Sidebar() {
                 href={item.href}
                 prefetch={false}
                 className={cn(
-                  "group relative flex items-center gap-3 px-3 py-3 rounded-2xl font-medium text-sm transition-all duration-200",
+                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-200/50"
-                    : "text-gray-700 hover:bg-gray-50"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
-                {/* Active Indicator Bar */}
-                {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-10 bg-white rounded-r-full"></div>
-                )}
+                <Icon className="h-4 w-4 flex-shrink-0" />
+                <span className="flex-1 truncate">{item.name}</span>
                 
-                {/* Icon Container with Gradient */}
-                <div className={cn(
-                  "relative flex items-center justify-center h-10 w-10 rounded-xl transition-all duration-300",
-                  isActive 
-                    ? "bg-white/20 shadow-inner" 
-                    : "bg-white border border-gray-100 group-hover:border-gray-200 group-hover:shadow-md group-hover:scale-105"
-                )}>
-                  {/* Gradient Background for Icon */}
-                  {!isActive && (
-                    <div className={cn("absolute inset-0 rounded-xl bg-gradient-to-br opacity-10 group-hover:opacity-20 transition-opacity", item.color)}></div>
-                  )}
-                  <Icon className={cn(
-                    "h-5 w-5 transition-all relative z-10",
-                    isActive ? "text-white" : "text-gray-600 group-hover:text-gray-900"
-                  )} />
-                </div>
-                
-                {/* Label & Description */}
-                <div className="flex-1 min-w-0">
-                  <p className={cn("font-semibold truncate", isActive ? "text-white" : "text-gray-900")}>
-                    {item.name}
-                  </p>
-                  <p className={cn("text-xs truncate", isActive ? "text-white/80" : "text-gray-500")}>
-                    {item.description}
-                  </p>
-                </div>
-                
-                {/* Notification Badge */}
-                {((item.dynamic && unreadCount > 0) || (!item.dynamic && item.badge && item.badge > 0)) && (
+                {showBadge && (
                   <Badge 
+                    variant={isActive ? "secondary" : "default"}
                     className={cn(
-                      "h-6 min-w-6 px-2 text-xs font-bold shadow-lg",
+                      "h-5 min-w-5 px-1.5 text-xs",
                       isActive 
-                        ? "bg-white text-blue-600" 
-                        : "bg-red-500 text-white"
+                        ? "bg-primary-foreground/20 text-primary-foreground" 
+                        : "bg-primary text-primary-foreground"
                     )}
                   >
-                    {item.dynamic 
-                      ? (unreadCount > 99 ? "99+" : unreadCount)
-                      : (item.badge && item.badge > 99 ? "99+" : item.badge)
-                    }
+                    {badgeCount && badgeCount > 99 ? "99+" : badgeCount}
                   </Badge>
                 )}
-                
-                {/* Hover Arrow */}
-                {!isActive && (
-                  <ChevronRight className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-                )}
-
-                {/* Hover Highlight */}
-                <div className={cn(
-                  "absolute inset-0 rounded-2xl bg-gradient-to-br opacity-0 group-hover:opacity-5 transition-opacity pointer-events-none",
-                  item.color
-                )}></div>
               </Link>
             );
           })}
         </div>
       </nav>
 
-      {/* Premium Sign Out Button */}
-      <div className="p-4 border-t border-gray-100 bg-gradient-to-b from-transparent via-gray-50/50 to-gray-50">
+      {/* Sign Out */}
+      <div className="p-3 border-t border-border">
         <button
           onClick={handleSignOut}
-          className="group w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-700 hover:bg-red-50 hover:text-red-600 font-medium text-sm transition-all duration-300 relative overflow-hidden"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
         >
-          {/* Hover Background Effect */}
-          <div className="absolute inset-0 bg-red-500/5 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
-          
-          <div className="relative flex items-center justify-center h-10 w-10 rounded-xl bg-gray-100 group-hover:bg-red-100 transition-all duration-300">
-            <LogOut className="h-5 w-5" />
-          </div>
-          <span className="flex-1 text-left font-semibold relative">Sign Out</span>
-          <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all relative" />
+          <LogOut className="h-4 w-4" />
+          <span>Sign Out</span>
         </button>
       </div>
-
-      {/* Custom Styles */}
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #E5E7EB;
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #D1D5DB;
-        }
-      `}</style>
     </div>
   );
 }

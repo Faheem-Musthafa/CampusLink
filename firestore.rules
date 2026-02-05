@@ -1,205 +1,390 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
+    
+    // ============================================
+    // HELPER FUNCTIONS
+    // ============================================
+    
+    // Check if user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
     
+    // Check if user is the document owner
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
+    // Get user document data (cached per request)
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Check if user is an admin
     function isAdmin() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isAuthenticated() && getUserData().role == 'admin';
     }
     
-    function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    // Check if user has verified status
+    function isVerified() {
+      return isAuthenticated() && getUserData().verificationStatus == 'approved';
     }
     
-    // Allow all read access for admin collections (temporary for admin without Firebase Auth)
-    function allowAdminRead() {
-      return true;
+    // Check if user has a specific role
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
     }
     
-    // Users collection
+    // Check if user is alumni
+    function isAlumni() {
+      return hasRole('alumni');
+    }
+    
+    // ============================================
+    // USER MANAGEMENT
+    // ============================================
+    
+    // Users collection - Core user accounts
     match /users/{userId} {
-      allow read: if true; // Allow read for admin dashboard
-      allow create: if isAuthenticated() && isOwner(userId);
-      allow update: if true; // Allow update for admin operations
-      allow delete: if true; // Allow delete for admin operations
-    }
-    
-    // Profiles collection
-    match /profiles/{profileId} {
+      // Anyone authenticated can read user profiles
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isOwner(profileId);
-      allow update: if isOwner(profileId);
-      allow delete: if false;
-    }
-    
-    // Mentorship requests
-    match /mentorshipRequests/{requestId} {
-      allow read: if true; // Allow read for admin
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
-    }
-    
-    // Conversations
-    match /conversations/{conversationId} {
-      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
-      allow create: if isAuthenticated() && request.auth.uid in request.resource.data.participants;
-      allow update: if isAuthenticated() && request.auth.uid in resource.data.participants;
-      allow delete: if false;
       
-      // Typing indicators subcollection
-      match /typing/{userId} {
-        allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
-        allow write: if isAuthenticated() && isOwner(userId);
-        allow delete: if isAuthenticated() && isOwner(userId);
-      }
+      // Users can only create their own document during signup
+      allow create: if isOwner(userId);
+      
+      // Users can update their own profile, admins can update any
+      allow update: if isOwner(userId) || isAdmin();
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
     }
     
-    // User presence
-    match /userPresence/{userId} {
+    // User profiles - Extended profile information
+    match /profiles/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
     }
     
-    // Messages - Allow querying if authenticated (permissive for conversation queries)
-    match /messages/{messageId} {
-      allow read: if isAuthenticated() && (
-        request.auth.uid == resource.data.senderId ||
-        request.auth.uid == resource.data.receiverId
-      );
-      allow list: if isAuthenticated(); // Allow querying, filtered by where clause
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.senderId;
-      // Allow sender to update their own messages (edit, delete, star) or receiver to mark as read/delivered/star
-      allow update: if isAuthenticated() && (
-        request.auth.uid == resource.data.senderId ||
-        request.auth.uid == resource.data.receiverId
-      );
-      allow delete: if false; // Only soft delete via update
+    // ============================================
+    // VERIFICATION SYSTEM
+    // ============================================
+    
+    // Verified Alumni Database - Pre-populated records from institution
+    match /verifiedAlumni/{admissionNo} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      
+      // Allow admins to update any record
+      // Allow authenticated users to claim unclaimed records
+      allow update: if isAdmin() || 
+        (isAuthenticated() && 
+          (resource.data.get('isUsed', false) == false));
+      
+      allow delete: if isAdmin();
     }
     
-    // Job postings
-    match /jobPostings/{jobId} {
-      allow read: if true; // Allow read for admin
-      allow create: if isAuthenticated();
-      allow update: if true; // Allow update for admin operations
-      allow delete: if true; // Allow delete for admin operations
-    }
-    
-    // Job applications
-    match /jobApplications/{applicationId} {
+    // Email OTPs for aspirant verification
+    match /emailOTPs/{email} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
       allow update: if isAuthenticated();
-      allow delete: if false;
-    }
-    
-    // Notifications
-    match /notifications/{notificationId} {
-      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow delete: if isAuthenticated();
     }
     
     // Verification Requests
     match /verificationRequests/{requestId} {
-      allow read: if true; // Allow read for admin
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
-    }
-    
-    // User Reports
-    match /userReports/{reportId} {
-      allow read: if true; // Allow read for admin
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
-    }
-    
-    // Admin Activity Logs
-    match /adminActivityLogs/{logId} {
-      allow read: if true; // Allow read for admin
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
-    }
-    
-    // Jobs collection
-    match /jobs/{jobId} {
-      allow read: if true; // Allow read for admin
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
-    }
-    
-    // Blocked users
-    match /blockedUsers/{blockId} {
-      allow read: if isAuthenticated() && (
-        request.auth.uid == resource.data.blockerId ||
-        request.auth.uid == resource.data.blockedUserId
-      );
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.blockerId;
-      allow update: if isAuthenticated() && request.auth.uid == resource.data.blockerId;
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.blockerId;
-    }
-    
-    // Chat reports
-    match /chatReports/{reportId} {
-      allow read: if true; // Allow read for admin
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.reporterId;
-      allow update: if true; // Allow update for admin
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin();
       allow delete: if false;
     }
     
-    // Link Previews (cached for 7 days)
-    match /linkPreviews/{previewId} {
-      allow read: if isAuthenticated(); // Any authenticated user can read cached previews
-      allow create: if isAuthenticated(); // Any authenticated user can cache new previews
-      allow update: if false; // Previews are immutable once cached
-      allow delete: if isAuthenticated(); // Allow cleanup of expired previews
+    // ============================================
+    // JOBS & APPLICATIONS
+    // ============================================
+    
+    // Job Postings
+    match /jobPostings/{jobId} {
+      allow read: if isAuthenticated();
+      
+      allow create: if isAuthenticated() && 
+        request.resource.data.postedBy == request.auth.uid;
+      
+      allow update: if isAuthenticated() && 
+        (resource.data.postedBy == request.auth.uid || isAdmin());
+      
+      allow delete: if isAuthenticated() && 
+        (resource.data.postedBy == request.auth.uid || isAdmin());
     }
     
-    // Posts collection
+    // Jobs collection (alternate/legacy name)
+    match /jobs/{jobId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+        request.resource.data.postedBy == request.auth.uid;
+      allow update: if isAuthenticated() && 
+        (resource.data.postedBy == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && 
+        (resource.data.postedBy == request.auth.uid || isAdmin());
+    }
+    
+    // Job Applications
+    match /jobApplications/{applicationId} {
+      allow read: if isAuthenticated() && 
+        (resource.data.applicantId == request.auth.uid || 
+         resource.data.employerId == request.auth.uid ||
+         isAdmin());
+      
+      allow create: if isAuthenticated() && 
+        request.resource.data.applicantId == request.auth.uid;
+      
+      allow update: if isAuthenticated() && 
+        (resource.data.applicantId == request.auth.uid || 
+         resource.data.employerId == request.auth.uid ||
+         isAdmin());
+      
+      allow delete: if isAuthenticated() && 
+        (resource.data.applicantId == request.auth.uid || isAdmin());
+    }
+    
+    // ============================================
+    // MENTORSHIP
+    // ============================================
+    
+    // Mentorship Requests (main collection)
+    match /mentorshipRequests/{requestId} {
+      allow read: if isAuthenticated() && 
+        (resource.data.studentId == request.auth.uid || 
+         resource.data.mentorId == request.auth.uid ||
+         isAdmin());
+      
+      allow create: if isAuthenticated() && 
+        request.resource.data.studentId == request.auth.uid;
+      
+      allow update: if isAuthenticated() && 
+        (resource.data.studentId == request.auth.uid || 
+         resource.data.mentorId == request.auth.uid ||
+         isAdmin());
+      
+      allow delete: if isAuthenticated() && 
+        (resource.data.studentId == request.auth.uid || isAdmin());
+    }
+    
+    // Mentorships collection (alternate/legacy name)
+    match /mentorships/{mentorshipId} {
+      allow read: if isAuthenticated() && 
+        (resource.data.menteeId == request.auth.uid || 
+         resource.data.mentorId == request.auth.uid ||
+         isAdmin());
+      allow create: if isAuthenticated() && 
+        request.resource.data.menteeId == request.auth.uid;
+      allow update: if isAuthenticated() && 
+        (resource.data.menteeId == request.auth.uid || 
+         resource.data.mentorId == request.auth.uid ||
+         isAdmin());
+      allow delete: if isAuthenticated() && 
+        (resource.data.menteeId == request.auth.uid || isAdmin());
+    }
+    
+    // ============================================
+    // MESSAGING / CHAT
+    // ============================================
+    
+    // Conversations
+    match /conversations/{conversationId} {
+      allow read: if isAuthenticated() && 
+        request.auth.uid in resource.data.participants;
+      
+      allow create: if isAuthenticated() && 
+        request.auth.uid in request.resource.data.participants;
+      
+      allow update: if isAuthenticated() && 
+        request.auth.uid in resource.data.participants;
+      
+      allow delete: if false;
+      
+      // Typing indicators subcollection
+      match /typing/{typingId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+    
+    // Messages
+    match /messages/{messageId} {
+      allow read: if isAuthenticated() && 
+        (resource.data.senderId == request.auth.uid || 
+         resource.data.receiverId == request.auth.uid ||
+         isAdmin());
+      
+      allow create: if isAuthenticated() && 
+        request.resource.data.senderId == request.auth.uid;
+      
+      allow update: if isAuthenticated() && 
+        (resource.data.senderId == request.auth.uid || 
+         resource.data.receiverId == request.auth.uid);
+      
+      allow delete: if isAuthenticated() && 
+        resource.data.senderId == request.auth.uid;
+    }
+    
+    // Blocked Users
+    match /blockedUsers/{blockId} {
+      allow read: if isAuthenticated() && 
+        (resource.data.blockerId == request.auth.uid || 
+         resource.data.blockedUserId == request.auth.uid ||
+         isAdmin());
+      
+      allow create: if isAuthenticated() && 
+        request.resource.data.blockerId == request.auth.uid;
+      
+      allow delete: if isAuthenticated() && 
+        resource.data.blockerId == request.auth.uid;
+      
+      allow update: if false;
+    }
+    
+    // ============================================
+    // SOCIAL FEED / POSTS
+    // ============================================
+    
+    // Posts
     match /posts/{postId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.authorId;
-      allow update: if isAuthenticated() && (request.auth.uid == resource.data.authorId || isAdmin());
-      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.authorId || isAdmin());
+      
+      allow create: if isAuthenticated() && 
+        request.resource.data.authorId == request.auth.uid;
+      
+      allow update: if isAuthenticated() && 
+        (resource.data.authorId == request.auth.uid || isAdmin());
+      
+      allow delete: if isAuthenticated() && 
+        (resource.data.authorId == request.auth.uid || isAdmin());
     }
     
-    // Post Likes collection
+    // Post Likes
     match /postLikes/{likeId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
-      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      
+      allow update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      allow delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
     }
     
-    // Post Comments collection
+    // Post Comments
     match /postComments/{commentId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.authorId;
-      allow update: if isAuthenticated() && (request.auth.uid == resource.data.authorId || isAdmin());
-      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.authorId || isAdmin());
+      
+      allow create: if isAuthenticated() && 
+        request.resource.data.authorId == request.auth.uid;
+      
+      allow update: if isAuthenticated() && 
+        resource.data.authorId == request.auth.uid;
+      
+      allow delete: if isAuthenticated() && 
+        (resource.data.authorId == request.auth.uid || isAdmin());
     }
     
-    // Comment Likes collection
+    // Comment Likes
     match /commentLikes/{likeId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
-      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      
+      allow update: if false;
+      
+      allow delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // ============================================
+    // NOTIFICATIONS
+    // ============================================
+    
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      allow create: if isAuthenticated();
+      
+      allow update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      allow delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // ============================================
+    // REPORTS & MODERATION
+    // ============================================
+    
+    // User Reports
+    match /userReports/{reportId} {
+      allow read: if isAdmin();
+      
+      allow create: if isAuthenticated() && 
+        request.resource.data.reportedBy == request.auth.uid;
+      
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+    
+    // Chat Reports
+    match /chatReports/{reportId} {
+      allow read: if isAdmin();
+      
+      allow create: if isAuthenticated() && 
+        request.resource.data.reporterId == request.auth.uid;
+      
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+    
+    // Reports (legacy collection)
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // ADMIN
+    // ============================================
+    
+    // Admin Activity Logs - Immutable audit trail
+    match /adminActivityLogs/{logId} {
+      allow read: if isAdmin();
+      // Allow any authenticated user to create logs (logging happens after admin actions)
+      allow create: if isAuthenticated();
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // Platform Configuration
+    match /config/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // ============================================
+    // LINK PREVIEWS (Cache)
+    // ============================================
+    
+    match /linkPreviews/{previewId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if isAuthenticated();
     }
   }
 }
-

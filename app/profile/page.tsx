@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { useVerificationGuard } from "@/hooks/use-verification-guard";
 import { getUserProfile, updateUserProfile } from "@/lib/firebase/profiles";
 import { getUserData } from "@/lib/firebase/auth";
@@ -17,8 +16,8 @@ import { useEffect, useState } from "react";
 import { User, UserProfile } from "@/types";
 import { 
   Camera, Upload as UploadIcon, Key, Edit2, MapPin, Briefcase, 
-  GraduationCap, Mail, Phone, Calendar, Link2, Github, Linkedin, 
-  Instagram, Globe, CheckCircle2, Award, Target, TrendingUp, User as UserIcon 
+  GraduationCap, Mail, Phone, Calendar, Github, Linkedin, 
+  Instagram, Globe, CheckCircle2, Award, User as UserIcon 
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
@@ -392,46 +391,45 @@ export default function ProfilePage() {
 
   return (
     <MainLayout>
-      <div className="max-w-[1200px] mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* Header Section */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-            <p className="text-gray-600 mt-1">Manage your personal information and preferences</p>
+            <h1 className="text-2xl font-semibold text-foreground">My Profile</h1>
+            <p className="text-muted-foreground mt-1">Manage your personal information</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
               <DialogTrigger asChild>
-                <ActionButton variant="outline" icon={<Key className="h-4 w-4" />} className="rounded-xl border-2 hover:bg-gray-50">
+                <ActionButton variant="outline" icon={<Key className="h-4 w-4" />}>
                   Change Password
                 </ActionButton>
               </DialogTrigger>
-              <DialogContent className="rounded-2xl">
+              <DialogContent>
                 <DialogHeader>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                      <Key className="h-6 w-6 text-white" />
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Key className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <DialogTitle className="text-xl font-bold">Change Password</DialogTitle>
+                      <DialogTitle>Change Password</DialogTitle>
                       <DialogDescription>Update your account password</DialogDescription>
                     </div>
                   </div>
                 </DialogHeader>
-                <form onSubmit={handleChangePassword} className="space-y-5 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="currentPassword" className="font-semibold">Current Password</Label>
+                <form onSubmit={handleChangePassword} className="space-y-4 py-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="currentPassword">Current Password</Label>
                     <Input 
                       id="currentPassword"
                       type="password" 
                       value={passwordData.currentPassword}
                       onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
                       required
-                      className="h-12 rounded-xl border-2 focus:border-blue-500"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword" className="font-semibold">New Password</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="newPassword">New Password</Label>
                     <Input 
                       id="newPassword"
                       type="password" 
@@ -439,23 +437,21 @@ export default function ProfilePage() {
                       onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                       required
                       minLength={6}
-                      className="h-12 rounded-xl border-2 focus:border-blue-500"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="font-semibold">Confirm Password</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
                     <Input 
                       id="confirmPassword"
                       type="password" 
                       value={passwordData.confirmPassword}
                       onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                       required
-                      className="h-12 rounded-xl border-2 focus:border-blue-500"
                     />
                   </div>
                   <ActionButton 
                     type="submit" 
-                    className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg" 
+                    className="w-full" 
                     loading={changingPassword}
                   >
                     Update Password
@@ -466,41 +462,41 @@ export default function ProfilePage() {
 
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
               <DialogTrigger asChild>
-                <ActionButton variant="primary" icon={<Edit2 className="h-4 w-4" />} className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg">
+                <ActionButton variant="primary" icon={<Edit2 className="h-4 w-4" />}>
                   Edit Profile
                 </ActionButton>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl">
+              <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-                      <Edit2 className="h-6 w-6 text-white" />
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Edit2 className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <DialogTitle className="text-xl font-bold">Edit Profile</DialogTitle>
+                      <DialogTitle>Edit Profile</DialogTitle>
                       <DialogDescription>Update your information</DialogDescription>
                     </div>
                   </div>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-6 py-4">
+                <form onSubmit={handleSubmit} className="space-y-5 py-3">
                   {/* Profile Photo */}
-                  <div className="flex items-center gap-4 p-5 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+                  <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
                     <div className="relative group">
                       {userData?.photoURL || profilePhotoPreview ? (
                         <img 
                           src={userData?.photoURL || profilePhotoPreview} 
                           alt="Profile" 
-                          className="w-20 h-20 rounded-xl object-cover ring-4 ring-white shadow-lg"
+                          className="w-16 h-16 rounded-full object-cover ring-2 ring-border"
                         />
                       ) : (
-                        <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                        <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white text-xl font-semibold">
                           {userData?.displayName?.charAt(0).toUpperCase() || "U"}
                         </div>
                       )}
                     </div>
                     <div className="flex-1">
                       <Label htmlFor="profile-photo-dialog" className="cursor-pointer">
-                        <div className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 w-fit transition-all shadow-lg">
+                        <div className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 w-fit transition-colors">
                           <UploadIcon className="h-4 w-4" />
                           <span className="text-sm font-medium">Upload Photo</span>
                         </div>
@@ -513,16 +509,16 @@ export default function ProfilePage() {
                         className="hidden"
                         disabled={uploadingPhoto}
                       />
-                      <p className="text-xs text-gray-500 mt-2">JPG, PNG or GIF. Max 5MB</p>
+                      <p className="text-xs text-muted-foreground mt-1.5">JPG, PNG or GIF. Max 5MB</p>
                     </div>
                   </div>
 
 
                   {/* Basic Info */}
-                  <div className="space-y-4">
-                    <h3 className="font-semibold text-gray-900">Basic Information</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                  <div className="space-y-3">
+                    <h3 className="font-medium text-foreground">Basic Information</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
                         <Label>Location</Label>
                         <Input 
                           value={formData.location} 
@@ -530,7 +526,7 @@ export default function ProfilePage() {
                           placeholder="City, Country" 
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <Label>Bio</Label>
                         <Textarea 
                           value={formData.bio} 
@@ -544,10 +540,10 @@ export default function ProfilePage() {
 
                   {/* Academic Info */}
                   {(userData?.role === "student" || userData?.role === "alumni") && (
-                    <div className="space-y-4">
-                      <h3 className="font-semibold text-gray-900">Academic Information</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
+                    <div className="space-y-3">
+                      <h3 className="font-medium text-foreground">Academic Information</h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
                           <Label>College/University</Label>
                           <Input 
                             value={formData.college} 
@@ -555,7 +551,7 @@ export default function ProfilePage() {
                             placeholder="Your institution"
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           <Label>Degree/Course</Label>
                           <Input 
                             value={formData.course} 
@@ -563,7 +559,7 @@ export default function ProfilePage() {
                             placeholder="B.Tech, MBA, etc."
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           <Label>Specialization</Label>
                           <Input 
                             value={formData.specialization} 
@@ -571,7 +567,7 @@ export default function ProfilePage() {
                             placeholder="Computer Science, etc."
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           <Label>Graduation Year</Label>
                           <Input 
                             value={formData.graduationYear} 
@@ -585,10 +581,10 @@ export default function ProfilePage() {
 
                   {/* Professional Info */}
                   {userData?.role === "alumni" && (
-                    <div className="space-y-4">
-                      <h3 className="font-semibold text-gray-900">Professional Information</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
+                    <div className="space-y-3">
+                      <h3 className="font-medium text-foreground">Professional Information</h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
                           <Label>Company</Label>
                           <Input 
                             value={formData.currentCompany} 
@@ -596,7 +592,7 @@ export default function ProfilePage() {
                             placeholder="Current company"
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           <Label>Job Title</Label>
                           <Input 
                             value={formData.jobTitle} 
@@ -604,7 +600,7 @@ export default function ProfilePage() {
                             placeholder="Your position"
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           <Label>Experience (years)</Label>
                           <Input 
                             type="number"
@@ -618,7 +614,7 @@ export default function ProfilePage() {
                   )}
 
                   {/* Skills */}
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <Label>Skills</Label>
                     <Input 
                       value={formData.skills} 
@@ -628,10 +624,10 @@ export default function ProfilePage() {
                   </div>
 
                   {/* Social Links */}
-                  <div className="space-y-4">
-                    <h3 className="font-semibold text-gray-900">Social Links</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                  <div className="space-y-3">
+                    <h3 className="font-medium text-foreground">Social Links</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
                         <Label>LinkedIn</Label>
                         <Input 
                           value={formData.linkedIn} 
@@ -639,7 +635,7 @@ export default function ProfilePage() {
                           placeholder="linkedin.com/in/username"
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <Label>GitHub</Label>
                         <Input 
                           value={formData.github} 
@@ -647,7 +643,7 @@ export default function ProfilePage() {
                           placeholder="github.com/username"
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <Label>Portfolio</Label>
                         <Input 
                           value={formData.portfolio} 
@@ -655,7 +651,7 @@ export default function ProfilePage() {
                           placeholder="yourwebsite.com"
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <Label>Instagram</Label>
                         <Input 
                           value={formData.instagram} 
@@ -675,53 +671,53 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Profile Strength Card - Google Material Design Style */}
-        <Card className="border-none shadow-xl hover:shadow-2xl transition-shadow rounded-2xl overflow-hidden">
-          <CardContent className="p-7">
-            <div className="flex items-start justify-between mb-6">
+        {/* Profile Strength Card */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-5">
               <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-1">Profile Strength</h2>
-                <p className="text-sm text-gray-600">Complete your profile to improve visibility</p>
+                <h2 className="text-lg font-semibold text-foreground">Profile Strength</h2>
+                <p className="text-sm text-muted-foreground">Complete your profile to improve visibility</p>
               </div>
-              <div className={`px-5 py-2.5 rounded-full ${getStrengthBgColor(profileStrength.percentage)} shadow-sm`}>
-                <span className={`text-lg font-bold ${getStrengthColor(profileStrength.percentage)}`}>
+              <div className={`px-3 py-1.5 rounded-full ${getStrengthBgColor(profileStrength.percentage)}`}>
+                <span className={`text-sm font-medium ${getStrengthColor(profileStrength.percentage)}`}>
                   {getStrengthLabel(profileStrength.percentage)}
                 </span>
               </div>
             </div>
 
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-3xl font-bold text-gray-900">{profileStrength.percentage}%</span>
-                <span className="text-sm text-gray-600">
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-2xl font-semibold text-foreground">{profileStrength.percentage}%</span>
+                <span className="text-sm text-muted-foreground">
                   {profileStrength.completed} of {profileStrength.total} fields completed
                 </span>
               </div>
-              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500" 
+                  className="h-full bg-primary rounded-full transition-all duration-500" 
                   style={{ width: `${profileStrength.percentage}%` }}
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {profileStrength.sections.map((section, index) => (
-                <div key={index} className="p-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 hover:shadow-md transition-all border border-gray-200">
+                <div key={index} className="p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-gray-800">{section.name}</span>
+                    <span className="text-sm font-medium text-foreground">{section.name}</span>
                     {section.isComplete && <CheckCircle2 className="h-4 w-4 text-green-600" />}
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all" 
+                        className="h-full bg-primary rounded-full transition-all" 
                         style={{ width: `${section.percentage}%` }}
                       />
                     </div>
-                    <span className="text-xs font-bold text-gray-600">{section.percentage}%</span>
+                    <span className="text-xs font-medium text-muted-foreground">{section.percentage}%</span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-muted-foreground mt-1.5">
                     {section.completed}/{section.total} filled
                   </p>
                 </div>
@@ -734,26 +730,26 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Sidebar - Profile Card */}
           <div className="lg:col-span-1">
-            <Card className="border-none shadow-xl rounded-2xl overflow-hidden">
-              <CardContent className="pt-8 pb-6">
+            <Card className="hover:shadow-md transition-shadow">
+              <CardContent className="pt-6 pb-5">
                 <div className="flex flex-col items-center text-center">
-                  <div className="relative group mb-5">
+                  <div className="relative group mb-4">
                     {userData?.photoURL || profilePhotoPreview ? (
                       <img 
                         src={userData?.photoURL || profilePhotoPreview} 
                         alt="Profile" 
-                        className="w-36 h-36 rounded-2xl object-cover ring-4 ring-gray-100 shadow-xl"
+                        className="w-28 h-28 rounded-full object-cover ring-2 ring-border"
                       />
                     ) : (
-                      <div className="w-36 h-36 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-5xl font-bold shadow-xl">
+                      <div className="w-28 h-28 rounded-full bg-primary flex items-center justify-center text-white text-4xl font-semibold">
                         {userData?.displayName?.charAt(0).toUpperCase() || "U"}
                       </div>
                     )}
                     <label 
                       htmlFor="profile-photo-upload" 
-                      className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-2xl"
+                      className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full"
                     >
-                      <Camera className="h-10 w-10 text-white" />
+                      <Camera className="h-8 w-8 text-white" />
                       <input
                         id="profile-photo-upload"
                         type="file"
@@ -764,16 +760,16 @@ export default function ProfilePage() {
                       />
                     </label>
                     {uploadingPhoto && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-2xl">
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
                         <LoadingSpinner size="md" />
                       </div>
                     )}
                   </div>
                   
-                  <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                  <h2 className="text-xl font-semibold text-foreground mb-0.5">
                     {userData?.displayName || "User"}
                   </h2>
-                  <p className="text-gray-600 mb-4">
+                  <p className="text-muted-foreground mb-3">
                     {userData?.role ? userData.role.charAt(0).toUpperCase() + userData.role.slice(1) : "Student"}
                   </p>
                   
@@ -783,11 +779,7 @@ export default function ProfilePage() {
                       userData?.verificationStatus === "pending" ? "secondary" : 
                       "destructive"
                     }
-                    className={`mb-5 px-4 py-1.5 rounded-full ${
-                      userData?.verificationStatus === "approved" ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white border-none" :
-                      userData?.verificationStatus === "pending" ? "bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-none" :
-                      ""
-                    }`}
+                    className="mb-4"
                   >
                     {userData?.verificationStatus === "approved" ? "✓ Verified" : 
                      userData?.verificationStatus === "pending" ? "⏳ Pending" : 
@@ -795,29 +787,29 @@ export default function ProfilePage() {
                   </Badge>
                 </div>
 
-                <div className="space-y-4 mt-6">
+                <div className="space-y-3 mt-5">
                   {user?.email && (
-                    <div className="flex items-center gap-3 text-sm">
-                      <Mail className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-700 break-all">{user.email}</span>
+                    <div className="flex items-center gap-2.5 text-sm">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-foreground break-all">{user.email}</span>
                     </div>
                   )}
                   {userData?.phoneNumber && (
-                    <div className="flex items-center gap-3 text-sm">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-700">{userData.phoneNumber}</span>
+                    <div className="flex items-center gap-2.5 text-sm">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-foreground">{userData.phoneNumber}</span>
                     </div>
                   )}
                   {profile?.location && (
-                    <div className="flex items-center gap-3 text-sm">
-                      <MapPin className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-700">{profile.location}</span>
+                    <div className="flex items-center gap-2.5 text-sm">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-foreground">{profile.location}</span>
                     </div>
                   )}
                   {userData?.createdAt && (
-                    <div className="flex items-center gap-3 text-sm">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-700">
+                    <div className="flex items-center gap-2.5 text-sm">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-foreground">
                         Joined {new Date(userData.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                       </span>
                     </div>
@@ -826,31 +818,31 @@ export default function ProfilePage() {
 
                 {/* Social Links */}
                 {(profile?.linkedIn || profile?.github || profile?.portfolio || profile?.instagram) && (
-                  <div className="mt-6 pt-6 border-t border-gray-100">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-4">Connect</h3>
-                    <div className="flex gap-3 flex-wrap">
+                  <div className="mt-5 pt-5 border-t border-border">
+                    <h3 className="text-sm font-medium text-foreground mb-3">Connect</h3>
+                    <div className="flex gap-2 flex-wrap">
                       {profile.linkedIn && (
                         <a href={formatUrl(profile.linkedIn, 'linkedin.com/in')} target="_blank" rel="noopener noreferrer" 
-                           className="p-3 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 transition-all shadow-sm hover:shadow-md">
-                          <Linkedin className="h-5 w-5 text-blue-600" />
+                           className="p-2.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
+                          <Linkedin className="h-4 w-4 text-blue-600" />
                         </a>
                       )}
                       {profile.github && (
                         <a href={formatUrl(profile.github, 'github.com')} target="_blank" rel="noopener noreferrer"
-                           className="p-3 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 transition-all shadow-sm hover:shadow-md">
-                          <Github className="h-5 w-5 text-gray-700" />
+                           className="p-2.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
+                          <Github className="h-4 w-4 text-foreground" />
                         </a>
                       )}
                       {profile.portfolio && (
                         <a href={formatUrl(profile.portfolio)} target="_blank" rel="noopener noreferrer"
-                           className="p-3 rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 transition-all shadow-sm hover:shadow-md">
-                          <Globe className="h-5 w-5 text-purple-600" />
+                           className="p-2.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
+                          <Globe className="h-4 w-4 text-purple-600" />
                         </a>
                       )}
                       {profile.instagram && (
                         <a href={formatUrl(profile.instagram, 'instagram.com')} target="_blank" rel="noopener noreferrer"
-                           className="p-3 rounded-xl bg-gradient-to-br from-pink-50 to-pink-100 hover:from-pink-100 hover:to-pink-200 transition-all shadow-sm hover:shadow-md">
-                          <Instagram className="h-5 w-5 text-pink-600" />
+                           className="p-2.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
+                          <Instagram className="h-4 w-4 text-pink-600" />
                         </a>
                       )}
                     </div>
@@ -864,52 +856,52 @@ export default function ProfilePage() {
           <div className="lg:col-span-2 space-y-6">
             {/* About */}
             {profile?.bio && (
-              <Card className="border-none shadow-xl rounded-2xl overflow-hidden">
-                <CardContent className="p-7">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
-                      <UserIcon className="h-5 w-5 text-white" />
+              <Card className="hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <UserIcon className="h-4 w-4 text-primary" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900">About</h3>
+                    <h3 className="text-base font-semibold text-foreground">About</h3>
                   </div>
-                  <p className="text-gray-700 leading-relaxed">{profile.bio}</p>
+                  <p className="text-muted-foreground leading-relaxed">{profile.bio}</p>
                 </CardContent>
               </Card>
             )}
 
             {/* Academic Info */}
             {(userData?.role === "student" || userData?.role === "alumni") && (
-              <Card className="border-none shadow-xl rounded-2xl overflow-hidden">
-                <CardContent className="p-7">
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
-                      <GraduationCap className="h-5 w-5 text-white" />
+              <Card className="hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2.5 mb-4">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <GraduationCap className="h-4 w-4 text-primary" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900">Academic Information</h3>
+                    <h3 className="text-base font-semibold text-foreground">Academic Information</h3>
                   </div>
-                  <div className="grid grid-cols-2 gap-5">
+                  <div className="grid grid-cols-2 gap-3">
                     {profile?.college && (
-                      <div className="p-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-100">
-                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">College</p>
-                        <p className="font-medium text-gray-900">{profile.college}</p>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-0.5">College</p>
+                        <p className="font-medium text-foreground">{profile.college}</p>
                       </div>
                     )}
                     {profile?.course && (
-                      <div className="p-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-100">
-                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Degree</p>
-                        <p className="font-medium text-gray-900">{profile.course}</p>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-0.5">Degree</p>
+                        <p className="font-medium text-foreground">{profile.course}</p>
                       </div>
                     )}
                     {profile?.specialization && (
-                      <div className="p-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-100">
-                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Specialization</p>
-                        <p className="font-medium text-gray-900">{profile.specialization}</p>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-0.5">Specialization</p>
+                        <p className="font-medium text-foreground">{profile.specialization}</p>
                       </div>
                     )}
                     {profile?.graduationYear && (
-                      <div className="p-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-100">
-                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Graduation Year</p>
-                        <p className="font-medium text-gray-900">{profile.graduationYear}</p>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-0.5">Graduation Year</p>
+                        <p className="font-medium text-foreground">{profile.graduationYear}</p>
                       </div>
                     )}
                   </div>
@@ -919,31 +911,31 @@ export default function ProfilePage() {
 
             {/* Professional Info */}
             {userData?.role === "alumni" && (
-              <Card className="border-none shadow-xl rounded-2xl overflow-hidden">
-                <CardContent className="p-7">
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
-                      <Briefcase className="h-5 w-5 text-white" />
+              <Card className="hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2.5 mb-4">
+                    <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                      <Briefcase className="h-4 w-4 text-green-600" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900">Professional Information</h3>
+                    <h3 className="text-base font-semibold text-foreground">Professional Information</h3>
                   </div>
-                  <div className="grid grid-cols-2 gap-5">
+                  <div className="grid grid-cols-2 gap-3">
                     {profile?.currentCompany && (
-                      <div className="p-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-100">
-                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Company</p>
-                        <p className="font-medium text-gray-900">{profile.currentCompany}</p>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-0.5">Company</p>
+                        <p className="font-medium text-foreground">{profile.currentCompany}</p>
                       </div>
                     )}
                     {profile?.jobTitle && (
-                      <div className="p-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-100">
-                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Job Title</p>
-                        <p className="font-medium text-gray-900">{profile.jobTitle}</p>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-0.5">Job Title</p>
+                        <p className="font-medium text-foreground">{profile.jobTitle}</p>
                       </div>
                     )}
                     {profile?.experience && (
-                      <div className="p-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-100">
-                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Experience</p>
-                        <p className="font-medium text-gray-900">{profile.experience} years</p>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-0.5">Experience</p>
+                        <p className="font-medium text-foreground">{profile.experience} years</p>
                       </div>
                     )}
                   </div>
@@ -953,17 +945,17 @@ export default function ProfilePage() {
 
             {/* Skills */}
             {profile?.skills && profile.skills.length > 0 && (
-              <Card className="border-none shadow-xl rounded-2xl overflow-hidden">
-                <CardContent className="p-7">
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg">
-                      <Award className="h-5 w-5 text-white" />
+              <Card className="hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2.5 mb-4">
+                    <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                      <Award className="h-4 w-4 text-purple-600" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900">Skills</h3>
+                    <h3 className="text-base font-semibold text-foreground">Skills</h3>
                   </div>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap gap-2">
                     {profile.skills.map((skill, index) => (
-                      <Badge key={index} variant="secondary" className="px-4 py-2 rounded-full bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 font-medium border-none hover:shadow-md transition-shadow">
+                      <Badge key={index} variant="secondary" className="px-3 py-1">
                         {skill}
                       </Badge>
                     ))}

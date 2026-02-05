@@ -72,6 +72,10 @@ export const signUp = async (
 
   await updateProfile(user, { displayName });
 
+  // Calculate verification deadline (2 days from now)
+  const verificationDeadline = new Date();
+  verificationDeadline.setDate(verificationDeadline.getDate() + 2);
+
   // Create user document in Firestore
   // Remove undefined values as Firestore doesn't accept them
   const userData: any = {
@@ -81,6 +85,19 @@ export const signUp = async (
     emailVerified: false,
     onboardingComplete: false,
     onboardingStep: 1, // Start at role selection
+    // Account status and verification
+    accountStatus: "active",
+    verificationStatus: "unverified",
+    admissionVerified: false,
+    // Auto-deactivation tracking
+    verificationDeadline: verificationDeadline,
+    deactivationWarningEmailSent: false,
+    // Feature access (default enabled until deactivation)
+    canPostJobs: true,
+    canPostFeed: true,
+    canMessage: true,
+    canAcceptMentorship: true,
+    // Timestamps
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };

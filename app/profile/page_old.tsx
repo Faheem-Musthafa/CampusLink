@@ -267,7 +267,7 @@ export default function ProfilePage() {
   const calculateProfileCompletion = () => {
     if (!profile) return 0;
     let completed = 0;
-    let total = 6;
+    const total = 6;
     if (profile.college) completed++;
     if (profile.bio) completed++;
     if (profile.skills && profile.skills.length > 0) completed++;

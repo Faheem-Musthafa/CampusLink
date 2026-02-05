@@ -10,7 +10,7 @@ export interface AdminActivityLog {
   id?: string;
   adminId: string;
   adminEmail: string;
-  adminName: string;
+  adminName?: string;
   action: AdminAction;
   targetType: TargetType;
   targetId: string;
@@ -37,7 +37,11 @@ export type AdminAction =
   | "bulk_action"
   | "export_data"
   | "login"
-  | "logout";
+  | "logout"
+  | "add_verified_alumni"
+  | "update_verified_alumni"
+  | "delete_verified_alumni"
+  | "bulk_import_verified_alumni";
 
 export type TargetType =
   | "verification"
@@ -46,7 +50,8 @@ export type TargetType =
   | "job"
   | "setting"
   | "campaign"
-  | "system";
+  | "system"
+  | "verified_alumni";
 
 /**
  * Log an admin action
@@ -201,6 +206,10 @@ export function getActionDescription(action: AdminAction): string {
     export_data: "Exported data",
     login: "Logged in",
     logout: "Logged out",
+    add_verified_alumni: "Added verified alumni record",
+    update_verified_alumni: "Updated verified alumni record",
+    delete_verified_alumni: "Deleted verified alumni record",
+    bulk_import_verified_alumni: "Bulk imported verified alumni",
   };
 
   return descriptions[action] || action;
@@ -226,6 +235,10 @@ export function getActionColor(action: AdminAction): string {
     export_data: "text-blue-300",
     login: "text-gray-400",
     logout: "text-gray-400",
+    add_verified_alumni: "text-green-400",
+    update_verified_alumni: "text-blue-400",
+    delete_verified_alumni: "text-red-400",
+    bulk_import_verified_alumni: "text-yellow-400",
   };
 
   return colors[action] || "text-gray-400";

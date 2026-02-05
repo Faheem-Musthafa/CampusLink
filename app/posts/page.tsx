@@ -28,7 +28,6 @@ import {
   FileText,
   TrendingUp,
   ImageIcon,
-  Award,
   RefreshCw,
 } from "lucide-react";
 
@@ -132,37 +131,25 @@ export default function PostsPage() {
   return (
     <MainLayout>
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Hero Header */}
-        <div className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-gradient-to-br from-purple-600 via-blue-600 to-cyan-600 p-4 sm:p-6 md:p-8 text-white shadow-2xl">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl animate-pulse delay-700"></div>
+        {/* Page Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">Community Feed</h1>
+            <p className="text-muted-foreground mt-1">
+              Share achievements and connect with your network
+            </p>
           </div>
-          
-          <div className="relative z-10">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 mb-4">
-                  <Sparkles className="h-4 w-4" />
-                  <span className="text-sm font-medium">Community Feed</span>
-                </div>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">Share Your Story</h1>
-                <p className="text-blue-100 max-w-lg text-sm sm:text-base">
-                  Celebrate achievements, share milestones, and connect with your college community
-                </p>
-              </div>
-              
-              <div className="hidden md:block">
-                <div className="w-32 h-32 bg-white/10 backdrop-blur-sm rounded-3xl flex items-center justify-center">
-                  <Award className="h-16 w-16 text-white/90" />
-                </div>
-              </div>
-            </div>
-          </div>
+          <ActionButton
+            className="bg-primary text-white"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New Post
+          </ActionButton>
         </div>
 
         {/* Create Post Card */}
-        <Card className="border-none shadow-lg hover:shadow-xl transition-all cursor-pointer" onClick={() => setShowCreateModal(true)}>
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setShowCreateModal(true)}>
           <CardContent className="p-4">
             <div className="flex items-center gap-4">
               <UserAvatar
@@ -172,62 +159,49 @@ export default function PostsPage() {
                 verified={userData?.role === "alumni" || userData?.role === "mentor"}
               />
               <div className="flex-1">
-                <div className="w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 text-left transition-colors">
+                <div className="w-full px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg text-muted-foreground text-left transition-colors">
                   Share your achievement or thoughts...
                 </div>
               </div>
             </div>
 
             <div className="flex items-center justify-between mt-4 pt-4 border-t gap-2">
-              <div className="flex items-center gap-1 sm:gap-2">
+              <div className="flex items-center gap-2">
                 <ActionButton
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="rounded-full px-2 sm:px-4"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowCreateModal(true);
                   }}
                 >
-                  <ImageIcon className="h-4 w-4 sm:mr-2 text-green-600" />
+                  <ImageIcon className="h-4 w-4 mr-2 text-green-600" />
                   <span className="hidden sm:inline">Photo</span>
                 </ActionButton>
                 <ActionButton
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="rounded-full px-2 sm:px-4 hidden xs:flex"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowCreateModal(true);
                   }}
                 >
-                  <Trophy className="h-4 w-4 sm:mr-2 text-yellow-600" />
+                  <Trophy className="h-4 w-4 mr-2 text-amber-600" />
                   <span className="hidden sm:inline">Achievement</span>
                 </ActionButton>
                 <ActionButton
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="rounded-full px-2 sm:px-4 hidden md:flex"
+                  className="hidden md:flex"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowCreateModal(true);
                   }}
                 >
-                  <Megaphone className="h-4 w-4 sm:mr-2 text-blue-600" />
+                  <Megaphone className="h-4 w-4 mr-2 text-primary" />
                   <span className="hidden sm:inline">Announce</span>
                 </ActionButton>
               </div>
-
-              <ActionButton
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full shadow-lg shrink-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowCreateModal(true);
-                }}
-              >
-                <Plus className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Create Post</span>
-              </ActionButton>
             </div>
           </CardContent>
         </Card>
@@ -240,38 +214,36 @@ export default function PostsPage() {
                 key={filter.type}
                 onClick={() => setSelectedFilter(filter.type)}
                 className={cn(
-                  "flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all",
+                  "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors",
                   selectedFilter === filter.type
-                    ? "bg-blue-600 text-white shadow-lg"
-                    : "bg-white text-gray-600 hover:bg-gray-100 shadow-sm"
+                    ? "bg-primary text-white"
+                    : "bg-card text-muted-foreground hover:bg-muted border"
                 )}
               >
-                <filter.icon className="h-3 w-3 sm:h-4 sm:w-4" />
+                <filter.icon className="h-4 w-4" />
                 <span className="hidden sm:inline">{filter.label}</span>
-                <span className="sm:hidden">{filter.type === "all" ? "All" : filter.type.slice(0, 4)}</span>
               </button>
             ))}
           </div>
 
           <ActionButton
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="rounded-full shrink-0"
           >
             <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
           </ActionButton>
         </div>
 
         {/* Posts Feed */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <LoadingSpinner size="lg" message="Loading posts..." />
             </div>
           ) : filteredPosts.length === 0 ? (
-            <Card className="border-none shadow-lg">
+            <Card>
               <CardContent className="py-12">
                 <EmptyState
                   icon={Sparkles}
@@ -282,15 +254,12 @@ export default function PostsPage() {
                       : `No ${selectedFilter} posts have been shared yet`
                   }
                   action={
-                    <ActionButton
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full"
-                      onClick={() => setShowCreateModal(true)}
-                    >
+                    <ActionButton onClick={() => setShowCreateModal(true)}>
                       <Plus className="h-4 w-4 mr-2" />
                       Create First Post
                     </ActionButton>
                   }
-                  iconClassName="text-purple-600"
+                  iconClassName="text-primary"
                 />
               </CardContent>
             </Card>
@@ -318,22 +287,22 @@ export default function PostsPage() {
           )}
         </div>
 
-        {/* Trending Section (Sidebar could be added) */}
+        {/* Trending Section */}
         {posts.length > 0 && (
-          <Card className="border-none shadow-lg bg-gradient-to-br from-blue-50 to-purple-50">
-            <CardHeader>
+          <Card>
+            <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
-                Trending in Your Network
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Trending Topics
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {["#Achievement", "#NewJob", "#Promotion", "#Graduation", "#Internship", "#FirstSalary", "#CollegeLife"].map((tag) => (
+                {["#Achievement", "#NewJob", "#Promotion", "#Graduation", "#Internship", "#CollegeLife"].map((tag) => (
                   <Badge
                     key={tag}
-                    variant="outline"
-                    className="bg-white hover:bg-blue-50 cursor-pointer transition-colors"
+                    variant="secondary"
+                    className="cursor-pointer hover:bg-primary/10"
                   >
                     {tag}
                   </Badge>

@@ -2,6 +2,7 @@ import {
   collection, 
   addDoc, 
   updateDoc, 
+  setDoc,
   doc, 
   getDoc,
   getDocs,
@@ -28,7 +29,7 @@ interface SubmitVerificationRequestParams {
   userName: string;
   userEmail: string;
   userRole: UserRole;
-  verificationType: "id_card" | "phone_otp";
+  verificationType: "id_card" | "phone_otp" | "email_otp";
   file?: File;
   additionalInfo?: string;
   phoneNumber?: string;
@@ -81,17 +82,22 @@ export const submitVerificationRequest = async (params: SubmitVerificationReques
 
     const docRef = await addDoc(collection(firestore, "verificationRequests"), verificationData);
 
+    // Auto-approve for phone_otp or email_otp verification types
+    const isAutoApproved = params.verificationType === "phone_otp" || params.verificationType === "email_otp";
+
     // Update user's verification status and mark onboarding as complete
+    // Use setDoc with merge to create the document if it doesn't exist
     const userRef = doc(firestore, "users", params.userId);
-    await updateDoc(userRef, {
+    await setDoc(userRef, {
       // Persist the selected role so dashboard/guards use the new value right after onboarding
       role: params.userRole,
-      verificationStatus: params.verificationType === "phone_otp" ? "approved" : "pending",
+      verificationStatus: isAutoApproved ? "approved" : "pending",
       phoneNumber: params.phoneNumber || null,
       phoneVerified: params.verificationType === "phone_otp",
+      emailVerified: params.verificationType === "email_otp",
       onboardingComplete: true,
       updatedAt: serverTimestamp(),
-    });
+    }, { merge: true });
 
     return docRef.id;
   } catch (error: any) {
@@ -162,10 +168,24 @@ export const updateVerificationStatus = async (
 
     // Update user's verification status
     const userRef = doc(firestore, "users", requestData.userId);
-    await updateDoc(userRef, {
+    const userUpdateData: Record<string, any> = {
       verificationStatus: status,
       updatedAt: serverTimestamp(),
-    });
+    };
+
+    // If approved, reactivate the account and restore all permissions
+    if (status === "approved") {
+      userUpdateData.accountStatus = "active";
+      userUpdateData.deactivatedAt = null;
+      userUpdateData.deactivationReason = null;
+      // Restore all feature permissions
+      userUpdateData.canPostJobs = true;
+      userUpdateData.canPostFeed = true;
+      userUpdateData.canMessage = true;
+      userUpdateData.canAcceptMentorship = true;
+    }
+
+    await updateDoc(userRef, userUpdateData);
 
     // Update profile verified status if profile exists
     try {

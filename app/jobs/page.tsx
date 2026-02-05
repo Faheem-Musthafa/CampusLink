@@ -142,62 +142,37 @@ export default function JobsPage() {
 
         {/* Search and Filters */}
         {userData?.role !== "alumni" && (
-          <Card className="border-none shadow-lg rounded-2xl overflow-hidden">
-            <CardContent className="p-6">
+          <Card>
+            <CardContent className="p-4">
               <div className="flex gap-4 flex-wrap">
                 <div className="flex-1 min-w-[250px]">
                   <div className="relative">
-                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Search jobs, companies, locations..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-12 h-12 rounded-xl border-2 border-gray-200 focus:border-blue-500 transition-colors text-base"
+                      className="pl-10"
                     />
                   </div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  <ActionButton
-                    variant={filterType === "all" ? "primary" : "outline"}
-                    size="sm"
-                    onClick={() => setFilterType("all")}
-                    className={filterType === "all" ? "bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full shadow-md" : "rounded-full border-2"}
-                  >
-                    All
-                  </ActionButton>
-                  <ActionButton
-                    variant={filterType === "full-time" ? "primary" : "outline"}
-                    size="sm"
-                    onClick={() => setFilterType("full-time")}
-                    className={filterType === "full-time" ? "bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full shadow-md" : "rounded-full border-2"}
-                  >
-                    Full-time
-                  </ActionButton>
-                  <ActionButton
-                    variant={filterType === "part-time" ? "primary" : "outline"}
-                    size="sm"
-                    onClick={() => setFilterType("part-time")}
-                    className={filterType === "part-time" ? "bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full shadow-md" : "rounded-full border-2"}
-                  >
-                    Part-time
-                  </ActionButton>
-                  <ActionButton
-                    variant={filterType === "internship" ? "primary" : "outline"}
-                    size="sm"
-                    onClick={() => setFilterType("internship")}
-                    className={filterType === "internship" ? "bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full shadow-md" : "rounded-full border-2"}
-                  >
-                    Internship
-                  </ActionButton>
-                  <ActionButton
-                    variant={filterType === "referral" ? "primary" : "outline"}
-                    size="sm"
-                    onClick={() => setFilterType("referral")}
-                    icon={<Briefcase />}
-                    className={filterType === "referral" ? "bg-gradient-to-r from-green-600 to-emerald-600 rounded-full shadow-md" : "rounded-full border-2"}
-                  >
-                    Referral
-                  </ActionButton>
+                  {[
+                    { key: "all", label: "All" },
+                    { key: "full-time", label: "Full-time" },
+                    { key: "part-time", label: "Part-time" },
+                    { key: "internship", label: "Internship" },
+                    { key: "referral", label: "Referral" },
+                  ].map((filter) => (
+                    <ActionButton
+                      key={filter.key}
+                      variant={filterType === filter.key ? "primary" : "outline"}
+                      size="sm"
+                      onClick={() => setFilterType(filter.key)}
+                    >
+                      {filter.label}
+                    </ActionButton>
+                  ))}
                 </div>
               </div>
             </CardContent>
@@ -205,16 +180,16 @@ export default function JobsPage() {
         )}
 
         {loading ? (
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2">
             {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="animate-pulse border-none shadow-lg rounded-2xl overflow-hidden">
+              <Card key={i} className="animate-pulse">
                 <CardHeader className="pb-3">
-                  <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-100 rounded-lg w-3/4 mb-3" />
-                  <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-100 rounded-lg w-1/2" />
+                  <div className="h-5 bg-muted rounded w-3/4 mb-2" />
+                  <div className="h-4 bg-muted rounded w-1/2" />
                 </CardHeader>
                 <CardContent>
-                  <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-100 rounded-lg w-full mb-3" />
-                  <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-100 rounded-lg w-2/3" />
+                  <div className="h-4 bg-muted rounded w-full mb-2" />
+                  <div className="h-4 bg-muted rounded w-2/3" />
                 </CardContent>
               </Card>
             ))}
@@ -238,73 +213,53 @@ export default function JobsPage() {
             }
           />
         ) : (
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2">
             {filteredJobs.map((job) => (
-              <Card key={job.id} className="group relative overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-300 rounded-2xl hover:-translate-y-1">
-                {/* Gradient accent */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                
+              <Card key={job.id} className="hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-3">
-                        <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{job.title}</CardTitle>
+                      <div className="flex items-center gap-2 mb-2">
+                        <CardTitle className="text-lg">{job.title}</CardTitle>
                         {job.isReferral && (
-                          <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-none shadow-sm">
-                            Referral
-                          </Badge>
+                          <Badge className="bg-green-100 text-green-800">Referral</Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
-                          <Briefcase className="h-4 w-4 text-blue-600" />
-                        </div>
-                        <span className="font-semibold text-gray-900">{job.company}</span>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Building2 className="h-4 w-4" />
+                        <span className="font-medium text-foreground">{job.company}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <MapPin className="h-4 w-4 shrink-0 text-gray-400" />
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                        <MapPin className="h-4 w-4" />
                         <span>{job.location}</span>
                       </div>
                     </div>
                     {!job.isReferral && (
-                      <Badge variant="secondary" className="shrink-0 rounded-full px-3 py-1 bg-gray-100 text-gray-700 font-medium">
-                        {job.type}
-                      </Badge>
+                      <Badge variant="secondary" className="capitalize">{job.type}</Badge>
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
-                    {job.description}
-                  </p>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground line-clamp-2">{job.description}</p>
                   {job.salary && (
-                    <div className="flex items-center gap-2 text-sm font-medium bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 px-4 py-2.5 rounded-xl">
-                      <DollarSign className="h-4 w-4 shrink-0 text-green-600" />
-                      <span className="text-green-700 font-semibold">
-                        {job.salary.currency} {job.salary.min.toLocaleString()} - {job.salary.max.toLocaleString()}
-                      </span>
+                    <div className="flex items-center gap-2 text-sm font-medium text-green-700 bg-green-50 px-3 py-2 rounded-lg">
+                      <DollarSign className="h-4 w-4" />
+                      {job.salary.currency} {job.salary.min.toLocaleString()} - {job.salary.max.toLocaleString()}
                     </div>
                   )}
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                    <span className="text-xs text-gray-500 flex items-center gap-1">
-                      <FileText className="h-3.5 w-3.5" />
+                  <div className="flex items-center justify-between pt-3 border-t">
+                    <span className="text-xs text-muted-foreground">
                       {job.applicationsCount || 0} application{job.applicationsCount !== 1 ? "s" : ""}
                     </span>
                     <div className="flex gap-2">
                       {userData?.role === "student" && (
                         <ActionButton 
                           size="sm" 
-                          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full shadow-md hover:shadow-lg transition-all"
                           onClick={() => handleApplyClick(job)}
                           disabled={appliedJobs.has(job.id)}
                         >
-                          {appliedJobs.has(job.id) ? (
-                            <>Applied ✓</>
-                          ) : (
-                            <>
-                              <Send className="h-3.5 w-3.5 mr-1.5" />
-                              Apply Now
-                            </>
+                          {appliedJobs.has(job.id) ? "Applied ✓" : (
+                            <><Send className="h-3.5 w-3.5 mr-1.5" />Apply</>
                           )}
                         </ActionButton>
                       )}
@@ -312,12 +267,9 @@ export default function JobsPage() {
                         <ActionButton 
                           size="sm" 
                           variant="outline"
-                          className="rounded-full border-2 hover:bg-gray-50"
                           onClick={() => window.open(job.applicationLink, '_blank')}
-                          icon={<ExternalLink />}
-                          iconPosition="right"
                         >
-                          External Link
+                          <ExternalLink className="h-3.5 w-3.5 mr-1.5" />External
                         </ActionButton>
                       )}
                     </div>
@@ -330,94 +282,77 @@ export default function JobsPage() {
 
         {/* Application Dialog */}
         <Dialog open={showApplicationDialog} onOpenChange={setShowApplicationDialog}>
-          <DialogContent className="sm:max-w-[600px] rounded-2xl">
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                  <FileText className="h-5 w-5 text-white" />
+              <DialogTitle className="flex items-center gap-2">
+                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <FileText className="h-4 w-4 text-primary" />
                 </div>
                 Apply for {selectedJob?.title}
               </DialogTitle>
-              <DialogDescription className="text-gray-600">
-                Submit your application for {selectedJob?.company}. Make sure to provide accurate information.
+              <DialogDescription>
+                Submit your application for {selectedJob?.company}
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-5 py-4">
-              {/* Job Info Summary */}
-              <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-5 rounded-xl space-y-3 border border-gray-200">
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <Building2 className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <span className="font-semibold text-gray-900">{selectedJob?.company}</span>
+            <div className="space-y-4 py-4">
+              {/* Job Info */}
+              <div className="bg-muted p-4 rounded-lg space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">{selectedJob?.company}</span>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <MapPin className="h-4 w-4 text-gray-400" />
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4" />
                   <span>{selectedJob?.location}</span>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <Briefcase className="h-4 w-4 text-gray-400" />
-                  <span className="capitalize">{selectedJob?.type}</span>
                 </div>
               </div>
 
               {/* Resume URL */}
               <div className="space-y-2">
-                <Label htmlFor="resumeUrl" className="text-sm font-semibold text-gray-900">
-                  Resume URL (Google Drive, Dropbox, etc.)
-                </Label>
+                <Label htmlFor="resumeUrl">Resume URL</Label>
                 <Input
                   id="resumeUrl"
                   type="url"
                   placeholder="https://drive.google.com/..."
                   value={resumeUrl}
                   onChange={(e) => setResumeUrl(e.target.value)}
-                  className="h-12 rounded-xl border-2 border-gray-200 focus:border-blue-500 transition-colors"
                 />
-                <p className="text-xs text-gray-500">
-                  Share a public link to your resume (PDF recommended)
+                <p className="text-xs text-muted-foreground">
+                  Share a public link to your resume (Google Drive, Dropbox, etc.)
                 </p>
               </div>
 
               {/* Cover Letter */}
               <div className="space-y-2">
-                <Label htmlFor="coverLetter" className="text-sm font-semibold text-gray-900">
-                  Cover Letter (Optional)
-                </Label>
+                <Label htmlFor="coverLetter">Cover Letter (Optional)</Label>
                 <Textarea
                   id="coverLetter"
-                  placeholder="Tell us why you're interested in this position and what makes you a great fit..."
+                  placeholder="Tell us why you're interested in this position..."
                   value={coverLetter}
                   onChange={(e) => setCoverLetter(e.target.value)}
-                  rows={6}
-                  className="rounded-xl border-2 border-gray-200 focus:border-blue-500 transition-colors resize-none"
+                  rows={4}
                 />
-                <p className="text-xs text-gray-500">
-                  A well-written cover letter can increase your chances of getting selected
-                </p>
               </div>
             </div>
 
-            <DialogFooter className="gap-3">
+            <DialogFooter className="gap-2">
               <ActionButton
                 variant="outline"
                 onClick={() => setShowApplicationDialog(false)}
                 disabled={submitting}
-                className="rounded-xl border-2"
               >
                 Cancel
               </ActionButton>
               <ActionButton
                 onClick={handleSubmitApplication}
                 disabled={submitting || !resumeUrl.trim()}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-lg"
               >
                 {submitting ? (
-                  <div className="flex items-center">
+                  <>
                     <LoadingSpinner size="sm" />
                     <span className="ml-2">Submitting...</span>
-                  </div>
+                  </>
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-2" />

@@ -362,7 +362,7 @@ export default function OnboardingPage() {
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold mb-1">Student</h3>
                       <p className={`text-sm ${selectedRole === "student" ? "text-gray-200" : "text-gray-600"}`}>
-                        I'm currently enrolled in a college or university
+                        I&apos;m currently enrolled in a college or university
                       </p>
                     </div>
                     {selectedRole === "student" && (
@@ -418,7 +418,7 @@ export default function OnboardingPage() {
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold mb-1">Aspirant</h3>
                       <p className={`text-sm ${selectedRole === "aspirant" ? "text-gray-200" : "text-gray-600"}`}>
-                        I'm preparing for college entrance exams
+                        I&apos;m preparing for college entrance exams
                       </p>
                     </div>
                     {selectedRole === "aspirant" && (

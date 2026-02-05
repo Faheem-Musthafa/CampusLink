@@ -127,7 +127,7 @@ export default function MentorshipPage() {
       
       // Create or get conversation between mentor and student
       try {
-        let conversation = await getConversationBetweenUsers(user!.uid, studentId);
+        const conversation = await getConversationBetweenUsers(user!.uid, studentId);
         
         if (!conversation) {
           // Create new conversation
@@ -159,7 +159,7 @@ export default function MentorshipPage() {
   const handleMessageMentor = async (mentorId: string) => {
     try {
       // Check if conversation exists
-      let conversation = await getConversationBetweenUsers(user!.uid, mentorId);
+      const conversation = await getConversationBetweenUsers(user!.uid, mentorId);
       
       if (!conversation) {
         // Create new conversation
@@ -259,8 +259,8 @@ export default function MentorshipPage() {
                 <LoadingSpinner size="lg" message="Loading mentors..." />
               </div>
             ) : mentors.length === 0 ? (
-              <Card className="border-none shadow-lg rounded-2xl">
-                <CardContent className="py-16">
+              <Card>
+                <CardContent className="py-12">
                   <EmptyState
                     icon={Users}
                     title="No mentors available yet"
@@ -300,58 +300,43 @@ export default function MentorshipPage() {
             )}
           </>
         ) : requests.length === 0 ? (
-          <Card className="border-none shadow-lg rounded-2xl overflow-hidden">
-            <CardContent className="py-16 text-center">
-              <div className="flex flex-col items-center">
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center mb-4">
-                  <Users className="h-8 w-8 text-purple-600" />
-                </div>
-                <p className="text-gray-600 mb-6 text-lg">
-                  {userData?.role === "student" || userData?.role === "aspirant"
-                    ? "You haven't made any mentorship requests yet."
-                    : "No mentorship requests at the moment."}
-                </p>
-                {(userData?.role === "student" || userData?.role === "aspirant") && (
-                  <ActionButton 
-                    variant="primary"
-                    onClick={handleBrowseMentors}
-                    icon={<Users />}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-full shadow-lg px-6"
-                  >
+          <Card>
+            <CardContent className="py-12">
+              <EmptyState
+                icon={Users}
+                title={userData?.role === "student" || userData?.role === "aspirant"
+                  ? "No mentorship requests yet"
+                  : "No pending requests"}
+                description={userData?.role === "student" || userData?.role === "aspirant"
+                  ? "Find a mentor to help guide your career journey"
+                  : "Mentorship requests from students will appear here"}
+                action={(userData?.role === "student" || userData?.role === "aspirant") ? (
+                  <ActionButton onClick={handleBrowseMentors}>
+                    <Users className="mr-2 h-4 w-4" />
                     Browse Mentors
                   </ActionButton>
-                )}
-              </div>
+                ) : undefined}
+              />
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-4">
             {requests.map((request) => (
-              <Card key={request.id} className="border-none shadow-lg rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300">
+              <Card key={request.id} className="hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="relative">
-                        <UserAvatar
-                          name={userData?.role === "student" || userData?.role === "aspirant" ? "Mentor" : "Student"}
-                          size="lg"
-                          fallbackClassName="bg-gradient-to-br from-purple-500 to-pink-500 text-white"
-                        />
-                        <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-white flex items-center justify-center shadow-sm">
-                          <div className={`h-2.5 w-2.5 rounded-full ${
-                            request.status === "accepted" ? "bg-green-500" :
-                            request.status === "pending" ? "bg-yellow-500" :
-                            "bg-gray-400"
-                          }`} />
-                        </div>
-                      </div>
+                    <div className="flex items-center gap-4">
+                      <UserAvatar
+                        name={userData?.role === "student" || userData?.role === "aspirant" ? "Mentor" : "Student"}
+                        size="lg"
+                      />
                       <div>
-                        <CardTitle className="text-lg font-bold text-gray-900">
+                        <CardTitle className="text-lg">
                           {userData?.role === "student" || userData?.role === "aspirant"
                             ? "Mentor Request"
                             : "Student Request"}
                         </CardTitle>
-                        <CardDescription className="text-gray-500">
+                        <CardDescription>
                           Requested on {formatDate(request.requestedDate)}
                         </CardDescription>
                       </div>
@@ -361,46 +346,41 @@ export default function MentorshipPage() {
                 </CardHeader>
                 {request.message && (
                   <CardContent className="pt-0 pb-4">
-                    <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200">
-                      <p className="text-sm text-gray-700 italic">"{request.message}"</p>
+                    <div className="bg-muted rounded-lg p-3">
+                      <p className="text-sm text-muted-foreground italic">&quot;{request.message}&quot;</p>
                     </div>
                   </CardContent>
                 )}
                 {request.status === "pending" && userData?.role === "alumni" && (
-                  <CardContent className="flex gap-3 pt-0">
+                  <CardContent className="flex gap-2 pt-0">
                     <ActionButton 
                       size="sm" 
-                      variant="success"
                       onClick={() => handleAcceptRequest(request.id, request.studentId)}
-                      icon={<CheckCircle className="h-4 w-4" />}
-                      className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-full shadow-md"
                     >
+                      <CheckCircle className="h-4 w-4 mr-1.5" />
                       Accept
                     </ActionButton>
                     <ActionButton 
                       size="sm" 
                       variant="outline"
                       onClick={() => handleRejectRequest(request.id)}
-                      icon={<XCircle />}
-                      className="rounded-full border-2"
                     >
+                      <XCircle className="h-4 w-4 mr-1.5" />
                       Decline
                     </ActionButton>
                   </CardContent>
                 )}
                 {request.status === "accepted" && (
-                  <CardContent className="flex gap-3 pt-0">
+                  <CardContent className="pt-0">
                     <ActionButton 
-                      size="sm" 
-                      variant="primary"
+                      size="sm"
                       onClick={() => handleMessageMentor(
                         userData?.role === "student" || userData?.role === "aspirant" 
                           ? request.mentorId 
                           : request.studentId
                       )}
-                      icon={<MessageSquare className="h-4 w-4" />}
-                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-full shadow-md"
                     >
+                      <MessageSquare className="h-4 w-4 mr-1.5" />
                       Message
                     </ActionButton>
                   </CardContent>
@@ -412,44 +392,41 @@ export default function MentorshipPage() {
 
         {/* Request Mentorship Dialog */}
         <Dialog open={selectedMentor !== null} onOpenChange={(open) => !open && setSelectedMentor(null)}>
-          <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-white" />
+              <DialogTitle className="flex items-center gap-2">
+                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Users className="h-4 w-4 text-primary" />
                 </div>
                 Request Mentorship
               </DialogTitle>
-              <DialogDescription className="text-gray-600">
+              <DialogDescription>
                 Send a mentorship request to {selectedMentor?.displayName}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-5">
+            <div className="space-y-4">
               {selectedMentor && (
-                <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200">
+                <div className="flex items-center gap-4 p-4 rounded-lg bg-muted">
                   <UserAvatar
                     src={selectedMentor.photoURL}
                     name={selectedMentor.displayName}
                     size="lg"
                     verified={selectedMentor.verificationStatus === "approved"}
-                    fallbackClassName="bg-gradient-to-br from-purple-600 to-pink-600 text-white font-bold"
                   />
                   <div>
-                    <p className="font-bold text-gray-900">{selectedMentor.displayName}</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="font-medium">{selectedMentor.displayName}</p>
+                    <p className="text-sm text-muted-foreground">
                       {mentorProfiles[selectedMentor.id]?.jobTitle || "Alumni"}
+                      {mentorProfiles[selectedMentor.id]?.currentCompany && (
+                        <> at {mentorProfiles[selectedMentor.id]?.currentCompany}</>
+                      )}
                     </p>
-                    {mentorProfiles[selectedMentor.id]?.currentCompany && (
-                      <p className="text-xs text-gray-500">
-                        at {mentorProfiles[selectedMentor.id]?.currentCompany}
-                      </p>
-                    )}
                   </div>
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                <label className="block text-sm font-medium mb-2">
                   Message (Optional)
                 </label>
                 <Textarea
@@ -458,30 +435,26 @@ export default function MentorshipPage() {
                   onChange={(e) => setRequestMessage(e.target.value)}
                   rows={4}
                   maxLength={500}
-                  className="rounded-xl border-2 border-gray-200 focus:border-purple-500 transition-colors resize-none"
                 />
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-muted-foreground mt-1">
                   {requestMessage.length}/500 characters
                 </p>
               </div>
 
-              <div className="flex gap-3 justify-end pt-2">
+              <div className="flex gap-2 justify-end pt-2">
                 <ActionButton 
                   variant="outline" 
                   onClick={() => setSelectedMentor(null)}
                   disabled={submitting}
-                  className="rounded-full border-2"
                 >
                   Cancel
                 </ActionButton>
                 <ActionButton 
-                  variant="primary"
                   onClick={handleRequestMentorship}
                   loading={submitting}
                   loadingText="Sending..."
-                  icon={<MessageSquare />}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-full shadow-lg"
                 >
+                  <MessageSquare className="h-4 w-4 mr-2" />
                   Send Request
                 </ActionButton>
               </div>

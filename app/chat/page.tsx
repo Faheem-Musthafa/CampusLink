@@ -376,53 +376,53 @@ export default function ChatPage() {
 
   return (
     <MainLayout>
-      <div className="h-[calc(100vh-80px)] flex bg-white rounded-2xl shadow-xl border-none overflow-hidden">
+      <div className="h-[calc(100vh-80px)] flex bg-card rounded-lg border overflow-hidden">
         {/* Sidebar */}
-        <div className={`w-full md:w-80 lg:w-96 border-r flex flex-col bg-gradient-to-b from-gray-50 to-white ${selectedConversation ? "hidden md:flex" : "flex"}`}>
+        <div className={`w-full md:w-80 lg:w-96 border-r flex flex-col ${selectedConversation ? "hidden md:flex" : "flex"}`}>
           {/* Header */}
-          <div className="p-5 bg-white border-b shadow-sm">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Messages</h1>
+          <div className="p-4 border-b">
+            <h1 className="text-xl font-semibold text-foreground mb-3">Messages</h1>
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search conversations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 h-11 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-blue-500 transition-colors"
+                className="pl-10"
               />
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b bg-white">
+          <div className="flex border-b">
             <button
               onClick={() => setActiveTab("inbox")}
-              className={`flex-1 py-3.5 px-4 text-sm font-semibold flex items-center justify-center gap-2 transition-all ${
+              className={`flex-1 py-3 px-4 text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
                 activeTab === "inbox"
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-gradient-to-t from-blue-50 to-transparent"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Inbox className="h-4 w-4" />
               Inbox
               {inboxConversations.length > 0 && (
-                <span className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-xs px-2.5 py-0.5 rounded-full font-bold shadow-sm">
+                <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
                   {inboxConversations.length}
                 </span>
               )}
             </button>
             <button
               onClick={() => setActiveTab("archived")}
-              className={`flex-1 py-3.5 px-4 text-sm font-semibold flex items-center justify-center gap-2 transition-all ${
+              className={`flex-1 py-3 px-4 text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
                 activeTab === "archived"
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-gradient-to-t from-blue-50 to-transparent"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Archive className="h-4 w-4" />
               Archived
               {archivedConversations.length > 0 && (
-                <span className="bg-gray-200 text-gray-700 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                <span className="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded-full">
                   {archivedConversations.length}
                 </span>
               )}
@@ -436,18 +436,18 @@ export default function ChatPage() {
                 <LoadingSpinner />
               </div>
             ) : displayedConversations.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mb-5 shadow-inner">
+              <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center mb-4">
                   {activeTab === "inbox" ? (
-                    <MessageSquare className="h-10 w-10 text-gray-400" />
+                    <MessageSquare className="h-7 w-7 text-muted-foreground" />
                   ) : (
-                    <Archive className="h-10 w-10 text-gray-400" />
+                    <Archive className="h-7 w-7 text-muted-foreground" />
                   )}
                 </div>
-                <p className="text-lg font-semibold text-gray-700">
+                <p className="font-medium text-foreground">
                   {activeTab === "inbox" ? "No conversations yet" : "No archived chats"}
                 </p>
-                <p className="text-sm text-gray-400 mt-2">
+                <p className="text-sm text-muted-foreground mt-1">
                   {activeTab === "inbox"
                     ? "Start a conversation from a user profile"
                     : "Archived conversations will appear here"}
@@ -465,10 +465,10 @@ export default function ChatPage() {
                     <div
                       key={conv.id}
                       onClick={() => setSelectedConversation(conv)}
-                      className={`p-4 cursor-pointer transition-all border-b border-gray-100 ${
+                      className={`p-4 cursor-pointer transition-colors border-b ${
                         isSelected
-                          ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-l-blue-500"
-                          : "hover:bg-white border-l-4 border-l-transparent hover:shadow-sm"
+                          ? "bg-primary/5 border-l-2 border-l-primary"
+                          : "hover:bg-muted/50 border-l-2 border-l-transparent"
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -479,20 +479,20 @@ export default function ChatPage() {
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-0.5">
-                            <span className="font-semibold text-gray-900 truncate text-sm">
+                            <span className="font-medium text-foreground truncate text-sm">
                               {otherUser?.displayName || "Unknown User"}
                             </span>
                             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                              {isPinned && <Pin className="h-3.5 w-3.5 text-blue-500" />}
-                              {isMuted && <BellOff className="h-3.5 w-3.5 text-gray-400" />}
+                              {isPinned && <Pin className="h-3.5 w-3.5 text-primary" />}
+                              {isMuted && <BellOff className="h-3.5 w-3.5 text-muted-foreground" />}
                             </div>
                           </div>
                           {conv.lastMessage && (
-                            <p className="text-sm text-gray-500 truncate">
+                            <p className="text-sm text-muted-foreground truncate">
                               {conv.lastMessage.content}
                             </p>
                           )}
-                          <p className="text-xs text-gray-400 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             {conv.lastMessage?.timestamp
                               ? new Date(conv.lastMessage.timestamp).toLocaleDateString()
                               : ""}
@@ -508,7 +508,7 @@ export default function ChatPage() {
         </div>
 
         {/* Chat Area */}
-        <div className={`flex-1 flex flex-col bg-white ${selectedConversation ? "flex" : "hidden md:flex"}`}>
+        <div className={`flex-1 flex flex-col ${selectedConversation ? "flex" : "hidden md:flex"}`}>
           {selectedConversation ? (
             <>
               {/* Header */}

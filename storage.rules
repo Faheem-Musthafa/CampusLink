@@ -1,35 +1,102 @@
 rules_version = '2';
+
+// NOTE: CampusLink uses ImgBB for image storage (profile photos, post images, etc.)
+// Firebase Storage is only used for document uploads (ID cards, resumes, etc.)
+// ImgBB API: https://api.imgbb.com/ - configured via NEXT_PUBLIC_IMGBB_API_KEY
+
 service firebase.storage {
   match /b/{bucket}/o {
-    // Profile images
-    match /profiles/{userId}/{fileName} {
-      allow read: if true; // Public read access
-      allow write: if request.auth != null && request.auth.uid == userId;
+    
+    // ============================================
+    // HELPER FUNCTIONS
+    // ============================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
     }
     
-    // Resume/CV uploads for job applications
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Max file size: 10MB
+    function isValidFileSize() {
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+    
+    // Allowed document types (PDF, images)
+    function isValidDocument() {
+      return request.resource.contentType.matches('application/pdf') ||
+             request.resource.contentType.matches('image/.*');
+    }
+    
+    // Allowed image types only
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // ============================================
+    // VERIFICATION DOCUMENTS
+    // ============================================
+    
+    // ID card uploads for verification
+    match /verification/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && isValidFileSize() && isValidDocument();
+      allow delete: if isOwner(userId);
+    }
+    
+    // ============================================
+    // RESUME / CV UPLOADS
+    // ============================================
+    
     match /resumes/{userId}/{fileName} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && isValidFileSize() && isValidDocument();
+      allow delete: if isOwner(userId);
     }
     
-    // General user uploads
-    match /uploads/{userId}/{fileName} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+    // ============================================
+    // POST IMAGES
+    // ============================================
+    
+    match /posts/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && isValidFileSize() && isValidImage();
+      allow delete: if isOwner(userId);
     }
     
-    // Chat media files
+    // ============================================
+    // GENERAL DOCUMENT UPLOADS
+    // ============================================
+    
+    match /documents/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && isValidFileSize();
+      allow delete: if isOwner(userId);
+    }
+    
+    // ============================================
+    // CHAT ATTACHMENTS (non-image files)
+    // ============================================
+    
     match /chat/{conversationId}/{userId}/{fileName} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && isValidFileSize();
+      allow delete: if isOwner(userId);
     }
     
-    // Chat media thumbnails
-    match /chat/{conversationId}/{userId}/thumbnails/{fileName} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+    // ============================================
+    // PROFILE IMAGES (fallback if not using ImgBB)
+    // ============================================
+    
+    match /profiles/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && isValidFileSize() && isValidImage();
+      allow delete: if isOwner(userId);
     }
-  }
-}
-
+    
+    // ============================================
+    // DENY ALL OTHER PATHS
+    // ============================================
+    

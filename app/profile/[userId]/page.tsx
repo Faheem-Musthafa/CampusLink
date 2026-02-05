@@ -201,7 +201,7 @@ export default function PublicProfilePage() {
               <Users className="h-10 w-10 text-gray-400" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Profile Not Found</h2>
-            <p className="text-gray-600 mb-6">This user profile doesn't exist or has been removed.</p>
+            <p className="text-gray-600 mb-6">This user profile doesn&apos;t exist or has been removed.</p>
             <Button onClick={() => router.back()}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Go Back

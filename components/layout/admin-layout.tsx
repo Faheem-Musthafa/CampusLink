@@ -21,6 +21,7 @@ import {
   Search,
   Settings,
   ChevronRight,
+  GraduationCap,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -66,6 +67,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       label: "Verifications",
       icon: FileCheck,
       description: "Review ID requests",
+    },
+    {
+      href: "/admin/verified-alumni",
+      label: "Alumni Database",
+      icon: GraduationCap,
+      description: "Manage verified admissions",
     },
     {
       href: "/admin/posts",

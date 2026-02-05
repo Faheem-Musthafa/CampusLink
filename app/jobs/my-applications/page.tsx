@@ -352,7 +352,7 @@ export default function MyApplicationsPage() {
                   {application.status === "shortlisted" && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                       <p className="text-sm text-blue-800 font-medium">
-                        ✨ You've been shortlisted! The employer is reviewing your profile.
+                        ✨ You&apos;ve been shortlisted! The employer is reviewing your profile.
                       </p>
                     </div>
                   )}

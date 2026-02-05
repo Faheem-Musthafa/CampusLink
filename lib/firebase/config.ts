@@ -59,3 +59,11 @@ if (typeof window !== "undefined") {
 
 export { app, auth, db, storage };
 
+// Helper function to get Firestore instance
+export function getDb(): Firestore {
+  if (!db) {
+    throw new Error("Firestore is not initialized");
+  }
+  return db;
+}
+

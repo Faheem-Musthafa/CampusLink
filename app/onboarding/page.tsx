@@ -25,12 +25,17 @@ import {
   Target,
   ArrowRight,
   ArrowLeft,
-  Sparkles
+  Sparkles,
+  Search,
+  ShieldCheck,
+  Loader2
 } from "lucide-react";
 import { submitVerificationRequest } from "@/lib/firebase/verification";
 import { updateUserProfile } from "@/lib/firebase/profiles";
-import { UserRole } from "@/types";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { validateAdmissionNumber, claimAdmissionNumber } from "@/lib/firebase/alumni-verification";
+import { sendOTPEmail, verifyEmailOTP } from "@/lib/firebase/email-otp";
+import { UserRole, ValidationResult } from "@/types";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 
 type Role = "student" | "alumni" | "aspirant";
@@ -55,6 +60,7 @@ interface FormData {
   interests: string[];
   lookingFor: string[];
   phoneNumber: string;
+  admissionNumber: string; // NEW: For student/alumni verification
   idCardFront?: File;
   idCardBack?: File;
   additionalDocuments?: File[];
@@ -80,10 +86,11 @@ const initialFormData: FormData = {
   interests: [],
   lookingFor: [],
   phoneNumber: "",
+  admissionNumber: "", // NEW
 };
 
 export default function OnboardingPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, firebaseUser, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
@@ -93,6 +100,20 @@ export default function OnboardingPage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [skillInput, setSkillInput] = useState("");
   const [idCardPreview, setIdCardPreview] = useState<string>("");
+  
+  // NEW: Admission number verification state
+  const [admissionValidation, setAdmissionValidation] = useState<ValidationResult | null>(null);
+  const [validatingAdmission, setValidatingAdmission] = useState(false);
+  const [admissionVerified, setAdmissionVerified] = useState(false);
+
+  // NEW: Email OTP verification state for aspirants
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpValue, setOtpValue] = useState("");
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [otpExpiresAt, setOtpExpiresAt] = useState<Date | null>(null);
+  const [otpCountdown, setOtpCountdown] = useState(0);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -236,17 +257,14 @@ export default function OnboardingPage() {
       }
       
       if (formData.role === "aspirant") {
-        if (!formData.phoneNumber.trim()) {
-          newErrors.phoneNumber = "Phone number is required";
-        } else {
-          const phoneRegex = /^\+\d{1,3}\s?\d{8,15}$/;
-          if (!phoneRegex.test(formData.phoneNumber)) {
-            newErrors.phoneNumber = "Format: +91 9876543210";
-            toast({
-              title: "Phone Format 📱",
-              description: "Please include country code (e.g., +91 for India)",
-            });
-          }
+        // Check email verification instead of phone
+        if (!emailVerified) {
+          newErrors.email = "Please verify your email";
+          toast({
+            title: "Email Verification Required 📧",
+            description: "Please verify your email to continue",
+            variant: "destructive",
+          });
         }
       }
     }
@@ -336,8 +354,12 @@ export default function OnboardingPage() {
   const handleSubmit = async () => {
     if (!validateStep()) return;
 
+    // Use firebaseUser as fallback if user data isn't loaded yet
+    const currentUser = user || firebaseUser;
+    const userId = user?.uid || firebaseUser?.uid;
+    
     // Check if user is available
-    if (!user || !user.uid) {
+    if (!currentUser || !userId) {
       toast({
         title: "Oops! 😅",
         description: "Please wait a moment while we load your information...",
@@ -348,6 +370,14 @@ export default function OnboardingPage() {
 
     // Validate required data based on role
     if (formData.role === "student" || formData.role === "alumni") {
+      if (!admissionVerified) {
+        toast({
+          title: "Admission Not Verified",
+          description: "Please verify your admission number to continue",
+          variant: "destructive",
+        });
+        return;
+      }
       if (!formData.idCardFront) {
         toast({
           title: "Missing ID Card",
@@ -359,10 +389,10 @@ export default function OnboardingPage() {
     }
 
     if (formData.role === "aspirant") {
-      if (!formData.phoneNumber) {
+      if (!emailVerified) {
         toast({
-          title: "Missing Phone Number",
-          description: "Please enter your phone number to continue",
+          title: "Email Not Verified",
+          description: "Please verify your email to continue",
           variant: "destructive",
         });
         return;
@@ -378,13 +408,21 @@ export default function OnboardingPage() {
         description: "Submitting your information securely...",
       });
 
+      // Claim admission number if verified (for students/alumni)
+      if ((formData.role === "student" || formData.role === "alumni") && admissionVerified && formData.admissionNumber) {
+        await claimAdmissionNumber(formData.admissionNumber.toUpperCase(), userId);
+      }
+
       // Submit verification request with validated data
+      // For aspirants with email verification, they are auto-approved
+      const isAspirantAutoApproved = formData.role === "aspirant" && emailVerified;
+      
       await submitVerificationRequest({
-        userId: user.uid,
-        userName: user.displayName || formData.fullName || "User",
-        userEmail: user.email || formData.email || "",
+        userId: userId,
+        userName: currentUser.displayName || formData.fullName || "User",
+        userEmail: currentUser.email || formData.email || "",
         userRole: formData.role as UserRole,
-        verificationType: formData.role === "aspirant" ? "phone_otp" : "id_card",
+        verificationType: formData.role === "aspirant" ? "email_otp" : "id_card",
         file: formData.idCardFront,
         phoneNumber: formData.phoneNumber || "",
         additionalInfo: JSON.stringify(formData),
@@ -421,23 +459,44 @@ export default function OnboardingPage() {
       }
 
       // Save profile data to Firestore
-      await updateUserProfile(user.uid, profileData);
+      await updateUserProfile(userId, profileData);
 
-      // Update user document with onboarding completion
+      // Update user document with onboarding completion (include admission verification)
       if (db) {
-        const userRef = doc(db, "users", user.uid);
-        await updateDoc(userRef, {
+        const userRef = doc(db, "users", userId);
+        const userUpdate: Record<string, unknown> = {
           onboardingComplete: true,
           onboardingCompletedAt: serverTimestamp(),
           phoneNumber: formData.phoneNumber || "",
           updatedAt: serverTimestamp(),
-        });
+        };
+        
+        // Add admission verification data for students/alumni
+        if ((formData.role === "student" || formData.role === "alumni") && admissionVerified) {
+          userUpdate.admissionNumber = formData.admissionNumber.toUpperCase();
+          userUpdate.admissionVerified = true;
+          userUpdate.admissionVerifiedAt = serverTimestamp();
+        }
+
+        // Auto-approve aspirants who verified their email
+        if (formData.role === "aspirant" && emailVerified) {
+          userUpdate.emailVerified = true;
+          userUpdate.emailVerifiedAt = serverTimestamp();
+          userUpdate.verificationStatus = "approved"; // Auto-approve
+          userUpdate.verified = true;
+        }
+        
+        await setDoc(userRef, userUpdate, { merge: true });
       }
 
       // Success message
+      const successMessage = formData.role === "aspirant" && emailVerified
+        ? "Welcome to CampusLink! Your profile is ready."
+        : "Your profile is being reviewed. You'll hear from us soon!";
+      
       toast({
         title: "Success! 🎉",
-        description: "Your profile is being reviewed. You'll hear from us soon!",
+        description: successMessage,
       });
 
       // Small delay for better UX
@@ -509,19 +568,174 @@ export default function OnboardingPage() {
     }
   };
 
+  // NEW: Validate admission number
+  const handleValidateAdmission = async () => {
+    if (!formData.admissionNumber.trim()) {
+      toast({
+        title: "Enter Admission Number",
+        description: "Please enter your admission number to verify",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setValidatingAdmission(true);
+    setAdmissionValidation(null);
+    setAdmissionVerified(false);
+
+    try {
+      const result = await validateAdmissionNumber(
+        formData.admissionNumber.trim().toUpperCase(),
+        formData.fullName,
+        formData.passingYear ? parseInt(formData.passingYear) : undefined
+      );
+
+      setAdmissionValidation(result);
+
+      if (result.isValid) {
+        setAdmissionVerified(true);
+        toast({
+          title: "Verified! ✅",
+          description: result.message || "Your admission number has been verified successfully",
+        });
+        
+        // Auto-fill name if suggested
+        if (result.suggestedName && result.suggestedName !== formData.fullName) {
+          updateField("fullName", result.suggestedName);
+        }
+        
+        // Auto-correct graduation year if needed
+        if (result.correctedYear) {
+          updateField("passingYear", String(result.correctedYear));
+        }
+      } else {
+        toast({
+          title: "Verification Failed",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Admission validation error:", error);
+      toast({
+        title: "Verification Error",
+        description: "Failed to verify admission number. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setValidatingAdmission(false);
+    }
+  };
+
+  // NEW: Send email OTP for aspirant verification
+  const handleSendOTP = async () => {
+    const email = formData.email || user?.email;
+    if (!email) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setOtpSending(true);
+    try {
+      const result = await sendOTPEmail(
+        email,
+        user?.uid || "",
+        formData.fullName || user?.displayName || "User"
+      );
+
+      if (result.success) {
+        setOtpSent(true);
+        setOtpExpiresAt(result.expiresAt || null);
+        setOtpCountdown(60); // 60 second cooldown before resend
+        toast({
+          title: "OTP Sent! 📧",
+          description: `Verification code sent to ${email}`,
+        });
+      } else {
+        toast({
+          title: "Failed to Send OTP",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error sending OTP:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send verification code. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  // NEW: Verify email OTP
+  const handleVerifyOTP = async () => {
+    const email = formData.email || user?.email;
+    if (!email || !otpValue.trim()) {
+      toast({
+        title: "Enter OTP",
+        description: "Please enter the verification code",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setOtpVerifying(true);
+    try {
+      const result = await verifyEmailOTP(email, otpValue.trim());
+
+      if (result.success) {
+        setEmailVerified(true);
+        toast({
+          title: "Email Verified! ✅",
+          description: "Your email has been verified successfully",
+        });
+      } else {
+        toast({
+          title: "Verification Failed",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error verifying OTP:", error);
+      toast({
+        title: "Error",
+        description: "Failed to verify code. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setOtpVerifying(false);
+    }
+  };
+
+  // OTP countdown effect
+  useEffect(() => {
+    if (otpCountdown > 0) {
+      const timer = setTimeout(() => setOtpCountdown(otpCountdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [otpCountdown]);
+
   // Render role selection with enhanced UI
   const renderRoleSelection = () => (
-    <div className="space-y-8">
-      <div className="text-center space-y-3">
-        <h2 className="text-3xl font-bold text-foreground">
+    <div className="space-y-6">
+      <div className="text-center space-y-1">
+        <h2 className="text-xl font-semibold text-foreground">
           Choose Your Role
         </h2>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+        <p className="text-muted-foreground">
           Select what best describes you to personalize your experience
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
         {[
           {
             role: "student" as Role,
@@ -549,63 +763,48 @@ export default function OnboardingPage() {
           return (
             <div
               key={option.role}
-              className={`relative group cursor-pointer transition-all duration-300 ${
-                isSelected ? "scale-105" : "hover:scale-102"
+              className={`cursor-pointer transition-all ${
+                isSelected ? "scale-[1.02]" : "hover:scale-[1.01]"
               }`}
               onClick={() => updateField("role", option.role)}
             >
               <Card
-                className={`h-full border-2 transition-all ${
+                className={`h-full transition-all ${
                   isSelected
-                    ? "border-transparent shadow-xl"
-                    : "border-neutral-200 hover:border-neutral-300 hover:shadow-md"
+                    ? "border-primary ring-2 ring-primary/20"
+                    : "hover:border-muted-foreground/30 hover:shadow-md"
                 }`}
               >
-                {isSelected && (
-                  <RoleBasedGradient 
-                    role={option.role} 
-                    variant="solid" 
-                    className="absolute -inset-0.5 rounded-lg -z-10"
-                  />
-                )}
-                <CardContent className={`p-6 space-y-4 relative ${isSelected ? "bg-white" : ""}`}>
-                  <div className={`w-16 h-16 mx-auto rounded-xl flex items-center justify-center ${
-                    isSelected ? "bg-gray-100" : "bg-neutral-100"
+                <CardContent className="p-5 space-y-3 relative">
+                  <div className={`w-12 h-12 mx-auto rounded-lg flex items-center justify-center ${
+                    isSelected ? "bg-primary/10" : "bg-muted"
                   }`}>
-                    <option.icon className={`h-8 w-8 ${
-                      isSelected ? "text-gray-900" : "text-neutral-700"
+                    <option.icon className={`h-6 w-6 ${
+                      isSelected ? "text-primary" : "text-muted-foreground"
                     }`} />
                   </div>
                   
-                  <div className="text-center space-y-2">
-                    <h3 className={`font-bold text-xl ${
-                      isSelected ? "text-gray-900" : "text-foreground"
-                    }`}>
+                  <div className="text-center space-y-1">
+                    <h3 className="font-semibold text-lg text-foreground">
                       {option.title}
                     </h3>
-                    <p className={`text-sm font-medium ${
-                      isSelected ? "text-gray-800" : "text-muted-foreground"
-                    }`}>
+                    <p className="text-sm text-muted-foreground">
                       {option.description}
                     </p>
                   </div>
 
-                  <ul className="space-y-2">
+                  <ul className="space-y-1.5">
                     {option.features.map((feature, idx) => (
-                      <li key={idx} className={`flex items-center gap-2 text-sm font-medium ${
-                        isSelected ? "text-gray-700" : "text-muted-foreground"
-                      }`}>
-                        <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      <li key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <CheckCircle2 className={`h-4 w-4 shrink-0 ${isSelected ? "text-primary" : ""}`} />
                         <span>{feature}</span>
                       </li>
                     ))}
                   </ul>
 
                   {isSelected && (
-                    <div className="absolute top-4 right-4">
-                      <div className="bg-white rounded-full p-1">
-                        <CheckCircle2 className="h-5 w-5 text-green-600" />
-                      </div>
+                    <div className="absolute top-3 right-3">
+                      <CheckCircle2 className="h-5 w-5 text-primary" />
                     </div>
                   )}
                 </CardContent>
@@ -715,8 +914,8 @@ export default function OnboardingPage() {
                       <SelectValue placeholder="Select degree" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Bachelor's">Bachelor's</SelectItem>
-                      <SelectItem value="Master's">Master's</SelectItem>
+                      <SelectItem value="Bachelor's">Bachelor&apos;s</SelectItem>
+                      <SelectItem value="Master's">Master&apos;s</SelectItem>
                       <SelectItem value="PhD">PhD</SelectItem>
                       <SelectItem value="Diploma">Diploma</SelectItem>
                     </SelectContent>
@@ -918,7 +1117,7 @@ export default function OnboardingPage() {
     </div>
   );
 
-  // Render verification step - Minimal
+  // Render verification step - Enhanced with admission number
   const renderVerification = () => (
     <div className="space-y-6">
       <div className="text-center space-y-1">
@@ -933,17 +1132,140 @@ export default function OnboardingPage() {
       <Card className="max-w-3xl mx-auto">
         <CardContent className="p-6 space-y-5">
           {(formData.role === "student" || formData.role === "alumni") && (
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>
-                  Upload ID Card (Front) *
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Upload your student/alumni ID card for verification
-                </p>
+            <>
+              {/* Step 1: Admission Number Verification */}
+              <div className="space-y-4 pb-5 border-b">
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    admissionVerified 
+                      ? "bg-green-100 text-green-700" 
+                      : "bg-blue-100 text-blue-700"
+                  }`}>
+                    {admissionVerified ? <CheckCircle2 className="w-5 h-5" /> : "1"}
+                  </div>
+                  <div>
+                    <Label className="text-base font-semibold">
+                      Admission Number Verification *
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Enter your admission/enrollment number to verify your identity
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Input
+                    id="admissionNumber"
+                    value={formData.admissionNumber}
+                    onChange={(e) => {
+                      updateField("admissionNumber", e.target.value.toUpperCase());
+                      setAdmissionValidation(null);
+                      setAdmissionVerified(false);
+                    }}
+                    placeholder="e.g., 2021CSE001"
+                    className={`flex-1 uppercase ${
+                      admissionValidation?.isValid === false ? "border-red-500" : 
+                      admissionVerified ? "border-green-500" : ""
+                    }`}
+                    disabled={admissionVerified}
+                  />
+                  <ActionButton
+                    type="button"
+                    onClick={handleValidateAdmission}
+                    disabled={validatingAdmission || admissionVerified || !formData.admissionNumber.trim()}
+                    variant={admissionVerified ? "outline" : "primary"}
+                    size="sm"
+                  >
+                    {validatingAdmission ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                        Verifying...
+                      </>
+                    ) : admissionVerified ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 mr-1" />
+                        Verified
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-4 h-4 mr-1" />
+                        Verify
+                      </>
+                    )}
+                  </ActionButton>
+                </div>
+
+                {/* Validation feedback */}
+                {admissionValidation && (
+                  <div className={`p-3 rounded-lg text-sm ${
+                    admissionValidation.isValid 
+                      ? "bg-green-50 text-green-800 border border-green-200" 
+                      : "bg-red-50 text-red-800 border border-red-200"
+                  }`}>
+                    <div className="flex items-start gap-2">
+                      {admissionValidation.isValid ? (
+                        <ShieldCheck className="w-5 h-5 mt-0.5 text-green-600" />
+                      ) : (
+                        <AlertCircle className="w-5 h-5 mt-0.5 text-red-600" />
+                      )}
+                      <div>
+                        <p className="font-medium">{admissionValidation.message}</p>
+                        {admissionValidation.alumniData && (
+                          <p className="text-xs mt-1 opacity-75">
+                            Name: {admissionValidation.alumniData.fullName} | 
+                            Year: {admissionValidation.alumniData.graduationYear} | 
+                            Course: {admissionValidation.alumniData.course}
+                          </p>
+                        )}
+                        {admissionValidation.status === "name_mismatch" && admissionValidation.suggestedName && (
+                          <p className="text-xs mt-1">
+                            Expected name: <strong>{admissionValidation.suggestedName}</strong>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {admissionVerified && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdmissionVerified(false);
+                      setAdmissionValidation(null);
+                    }}
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    Change admission number
+                  </button>
+                )}
+
+                {errors.admissionNumber && (
+                  <p className="text-destructive text-xs">{errors.admissionNumber}</p>
+                )}
               </div>
 
-              <div className="space-y-2">
+              {/* Step 2: ID Card Upload */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                    idCardPreview 
+                      ? "bg-green-100 text-green-700" 
+                      : "bg-muted text-muted-foreground"
+                  }`}>
+                    {idCardPreview ? <CheckCircle2 className="w-5 h-5" /> : "2"}
+                  </div>
+                  <div>
+                    <Label className="text-base font-semibold">
+                      Upload ID Card *
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Upload your student/alumni ID card for manual verification
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
                 
                 {idCardPreview ? (
                   <div className="relative group">
@@ -990,35 +1312,125 @@ export default function OnboardingPage() {
                   <p className="text-destructive text-xs">{errors.idCardFront}</p>
                 )}
               </div>
-            </div>
+              </div>
+            </>
           )}
 
           {formData.role === "aspirant" && (
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="phoneNumber">
-                  Phone Number *
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Required for verification
+            <div className="space-y-6">
+              {/* Email Verification Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${
+                    emailVerified 
+                      ? "bg-green-100 text-green-700" 
+                      : "bg-primary/10 text-primary"
+                  }`}>
+                    {emailVerified ? <CheckCircle2 className="h-4 w-4" /> : "1"}
+                  </div>
+                  <Label className="text-base font-medium">
+                    Email Verification *
+                  </Label>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Verify your email to continue with the registration
                 </p>
+
+                {/* Email Display */}
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Email</p>
+                  <p className="font-medium">{formData.email || user?.email || "No email"}</p>
+                </div>
+
+                {emailVerified ? (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    <div>
+                      <p className="font-medium text-green-800">Email Verified</p>
+                      <p className="text-xs text-green-600">Your email has been verified successfully</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {!otpSent ? (
+                      <ActionButton
+                        onClick={handleSendOTP}
+                        loading={otpSending}
+                        loadingText="Sending..."
+                        className="w-full"
+                      >
+                        Send Verification Code
+                      </ActionButton>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="otp">Enter 6-digit OTP</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="otp"
+                              type="text"
+                              value={otpValue}
+                              onChange={(e) => setOtpValue(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                              placeholder="000000"
+                              maxLength={6}
+                              className="text-center text-lg font-mono tracking-widest"
+                            />
+                            <ActionButton
+                              onClick={handleVerifyOTP}
+                              loading={otpVerifying}
+                              loadingText="Verifying..."
+                              disabled={otpValue.length !== 6}
+                            >
+                              Verify
+                            </ActionButton>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Check your email for the verification code
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            Didn&apos;t receive the code?
+                          </span>
+                          {otpCountdown > 0 ? (
+                            <span className="text-muted-foreground">
+                              Resend in {otpCountdown}s
+                            </span>
+                          ) : (
+                            <button
+                              onClick={handleSendOTP}
+                              disabled={otpSending}
+                              className="text-primary hover:underline"
+                            >
+                              Resend OTP
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-1.5">
+              {/* Phone Number Section */}
+              <div className="space-y-3 pt-4 border-t">
+                <div className="space-y-1.5">
+                  <Label htmlFor="phoneNumber">
+                    Phone Number (Optional)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    For additional contact purposes
+                  </p>
+                </div>
+
                 <Input
                   id="phoneNumber"
                   type="tel"
                   value={formData.phoneNumber}
                   onChange={(e) => updateField("phoneNumber", e.target.value)}
                   placeholder="+91 9876543210"
-                  className={errors.phoneNumber ? "border-red-500" : ""}
                 />
-                {errors.phoneNumber && (
-                  <p className="text-destructive text-xs">{errors.phoneNumber}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Include country code
-                </p>
               </div>
             </div>
           )}
@@ -1045,37 +1457,37 @@ export default function OnboardingPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <LoadingSpinner size="xl" message="Loading your profile..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50/30 via-purple-50/30 to-pink-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header with gradient */}
-        <div className="text-center mb-8 space-y-3">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full shadow-sm mb-4">
-            <Sparkles className="w-4 h-4 text-purple-600" />
-            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+    <div className="min-h-screen bg-muted/30 py-8 px-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8 space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full mb-3">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">
               Welcome to CampusLink
             </span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-semibold text-foreground">
             Complete Your Profile
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-muted-foreground max-w-xl mx-auto">
             Just a few steps to unlock your personalized experience
           </p>
         </div>
 
-        {/* Progress Bar with enhanced design */}
-        <Card className="mb-8 shadow-md border-neutral-200">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-3">
+        {/* Progress Bar */}
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-neutral-700">
+                <span className="text-sm font-medium text-foreground">
                   Step {currentStep} of {totalSteps}
                 </span>
                 {formData.role && (
@@ -1092,19 +1504,19 @@ export default function OnboardingPage() {
                 <span className="text-sm text-muted-foreground">Saving...</span>
               )}
             </div>
-            <Progress value={progress} className="h-2.5" />
-            <div className="mt-2 text-xs text-muted-foreground text-center">
+            <Progress value={progress} className="h-2" />
+            <div className="mt-1.5 text-xs text-muted-foreground text-center">
               {Math.round(progress)}% complete
             </div>
           </CardContent>
         </Card>
 
         {/* Form Content */}
-        <div className="mb-6">{renderStep()}</div>
+        <div className="mb-5">{renderStep()}</div>
 
         {/* Error Message */}
         {errors.submit && (
-          <Card className="mb-4 border-destructive">
+          <Card className="mb-4 border-destructive/50 bg-destructive/5">
             <CardContent className="p-3">
               <p className="text-sm text-destructive">{errors.submit}</p>
             </CardContent>

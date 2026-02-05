@@ -152,7 +152,7 @@ export default function MyPostsPage() {
       await updateJobApplication(application.id, { status: "accepted" });
       
       // Create or get conversation
-      let conversation = await getConversationBetweenUsers(user.uid, application.applicantId);
+      const conversation = await getConversationBetweenUsers(user.uid, application.applicantId);
       
       if (!conversation) {
         const conversationId = await createConversation([user.uid, application.applicantId]);
@@ -211,7 +211,7 @@ export default function MyPostsPage() {
     
     try {
       // Check if conversation exists
-      let conversation = await getConversationBetweenUsers(user.uid, applicantId);
+      const conversation = await getConversationBetweenUsers(user.uid, applicantId);
       
       if (!conversation) {
         // Create new conversation
