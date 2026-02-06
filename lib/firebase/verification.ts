@@ -34,6 +34,11 @@ interface SubmitVerificationRequestParams {
   additionalInfo?: string;
   phoneNumber?: string;
   otp?: string;
+  // Additional fields for better admin display
+  admissionNumber?: string;
+  college?: string;
+  department?: string;
+  graduationYear?: string;
 }
 
 export const submitVerificationRequest = async (params: SubmitVerificationRequestParams): Promise<string> => {
@@ -56,11 +61,16 @@ export const submitVerificationRequest = async (params: SubmitVerificationReques
       }
     }
 
-    // Create verification request
+    // Create verification request with all relevant data for admin display
     const verificationData: any = {
       userId: params.userId,
       userName: params.userName,
       userEmail: params.userEmail,
+      // Also save as displayName/email for backward compatibility
+      displayName: params.userName,
+      email: params.userEmail,
+      // Save role in multiple formats for compatibility
+      role: params.userRole,
       userRole: params.userRole,
       verificationType: params.verificationType,
       status: "pending" as VerificationStatus,
@@ -68,12 +78,27 @@ export const submitVerificationRequest = async (params: SubmitVerificationReques
       updatedAt: serverTimestamp(),
     };
 
+    // Add ID card URL
     if (idCardUrl) {
       verificationData.idCardUrl = idCardUrl;
     }
 
     if (params.phoneNumber) {
       verificationData.phoneNumber = params.phoneNumber;
+    }
+
+    // Add direct fields for admin display (not just in additionalInfo)
+    if (params.admissionNumber) {
+      verificationData.admissionNumber = params.admissionNumber;
+    }
+    if (params.college) {
+      verificationData.college = params.college;
+    }
+    if (params.department) {
+      verificationData.department = params.department;
+    }
+    if (params.graduationYear) {
+      verificationData.graduationYear = params.graduationYear;
     }
 
     if (params.additionalInfo) {
@@ -88,7 +113,11 @@ export const submitVerificationRequest = async (params: SubmitVerificationReques
     // Update user's verification status and mark onboarding as complete
     // Use setDoc with merge to create the document if it doesn't exist
     const userRef = doc(firestore, "users", params.userId);
-    await setDoc(userRef, {
+    
+    // Two-stage verification:
+    // Stage 1 (pending): Admission verified + ID card uploaded = limited access (view-only)
+    // Stage 2 (approved): Admin reviews documents = full access
+    const userUpdateData: Record<string, unknown> = {
       // Persist the selected role so dashboard/guards use the new value right after onboarding
       role: params.userRole,
       verificationStatus: isAutoApproved ? "approved" : "pending",
@@ -97,7 +126,25 @@ export const submitVerificationRequest = async (params: SubmitVerificationReques
       emailVerified: params.verificationType === "email_otp",
       onboardingComplete: true,
       updatedAt: serverTimestamp(),
-    }, { merge: true });
+    };
+
+    // Set access flags based on verification status
+    if (isAutoApproved) {
+      // Full access for auto-approved users (aspirants with email verification)
+      userUpdateData.canPostFeed = true;
+      userUpdateData.canMessage = true;
+      userUpdateData.canPostJobs = false; // Aspirants typically don't post jobs
+      userUpdateData.canAcceptMentorship = false; // Can request, not accept
+    } else {
+      // Limited access for pending users (students/alumni awaiting admin review)
+      userUpdateData.canPostFeed = false;
+      userUpdateData.canPostJobs = false;
+      userUpdateData.canMessage = false;
+      userUpdateData.canAcceptMentorship = false;
+      userUpdateData.verificationSubmittedAt = serverTimestamp();
+    }
+
+    await setDoc(userRef, userUpdateData, { merge: true });
 
     return docRef.id;
   } catch (error: any) {

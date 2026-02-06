@@ -425,6 +425,11 @@ export default function OnboardingPage() {
         verificationType: formData.role === "aspirant" ? "email_otp" : "id_card",
         file: formData.idCardFront,
         phoneNumber: formData.phoneNumber || "",
+        // Include direct fields for admin display
+        admissionNumber: formData.admissionNumber?.toUpperCase() || "",
+        college: formData.college || "",
+        department: formData.branch || "",
+        graduationYear: formData.passingYear || "",
         additionalInfo: JSON.stringify(formData),
       });
 
@@ -472,10 +477,19 @@ export default function OnboardingPage() {
         };
         
         // Add admission verification data for students/alumni
+        // Two-stage verification: admission verified = limited access, admin approval = full access
         if ((formData.role === "student" || formData.role === "alumni") && admissionVerified) {
           userUpdate.admissionNumber = formData.admissionNumber.toUpperCase();
           userUpdate.admissionVerified = true;
           userUpdate.admissionVerifiedAt = serverTimestamp();
+          // Stage 1: Pending admin review - limited access (view-only)
+          userUpdate.verificationStatus = "pending";
+          userUpdate.verificationSubmittedAt = serverTimestamp();
+          // Limited access flags - can only view content, no posting/messaging
+          userUpdate.canPostJobs = false;
+          userUpdate.canPostFeed = false;
+          userUpdate.canMessage = false;
+          userUpdate.canAcceptMentorship = false;
         }
 
         // Auto-approve aspirants who verified their email
@@ -484,15 +498,25 @@ export default function OnboardingPage() {
           userUpdate.emailVerifiedAt = serverTimestamp();
           userUpdate.verificationStatus = "approved"; // Auto-approve
           userUpdate.verified = true;
+          // Full access for verified aspirants
+          userUpdate.canPostJobs = false; // Aspirants typically don't post jobs
+          userUpdate.canPostFeed = true;
+          userUpdate.canMessage = true;
+          userUpdate.canAcceptMentorship = false; // Can request, not accept
         }
         
         await setDoc(userRef, userUpdate, { merge: true });
       }
 
-      // Success message
-      const successMessage = formData.role === "aspirant" && emailVerified
-        ? "Welcome to CampusLink! Your profile is ready."
-        : "Your profile is being reviewed. You'll hear from us soon!";
+      // Success message based on verification stage
+      let successMessage: string;
+      if (formData.role === "aspirant" && emailVerified) {
+        successMessage = "Welcome to CampusLink! Your profile is ready.";
+      } else if ((formData.role === "student" || formData.role === "alumni") && admissionVerified) {
+        successMessage = "Your admission number is verified! You have limited access while we review your uploaded documents for full access.";
+      } else {
+        successMessage = "Your profile is being reviewed. You'll hear from us soon!";
+      }
       
       toast({
         title: "Success! 🎉",

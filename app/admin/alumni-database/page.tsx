@@ -67,12 +67,20 @@ export default function AlumniDatabasePage() {
     try {
       const db = getDb();
       const snapshot = await getDocs(collection(db, "verifiedAlumni"));
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        admissionNumber: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate?.() || new Date(),
-      })) as AlumniRecord[];
+      const data = snapshot.docs.map((doc) => {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          admissionNumber: doc.id,
+          name: d.name || d.fullName || "",
+          graduationYear: d.graduationYear,
+          department: d.department || d.course,
+          // Map isUsed to claimed for UI consistency
+          claimed: d.isUsed === true,
+          claimedBy: d.claimedBy,
+          createdAt: d.createdAt?.toDate?.() || new Date(),
+        } as AlumniRecord;
+      });
       setRecords(data);
     } catch (error) {
       console.error("Error fetching records:", error);

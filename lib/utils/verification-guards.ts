@@ -1,7 +1,10 @@
 import type { User } from "@/types";
 
 /**
- * Check if user has full verification (ID + admission)
+ * Check if user has full verification
+ * Different requirements for different roles:
+ * - Students/Alumni: Need admission verification + admin approval
+ * - Aspirants: Just need email verification + admin approval (no admission number)
  * ADMINS ALWAYS RETURN TRUE (God Mode)
  */
 export function isFullyVerified(user: User): boolean {
@@ -13,6 +16,12 @@ export function isFullyVerified(user: User): boolean {
         return false;
     }
 
+    // Aspirants don't need admission verification
+    if (user.role === "aspirant") {
+        return user.verificationStatus === "approved";
+    }
+
+    // Students and Alumni need both admission verification and admin approval
     return (
         user.verificationStatus === "approved" &&
         user.admissionVerified === true
@@ -108,13 +117,50 @@ export function getVerificationMessage(user: User): {
         };
     }
 
-    const hasIdVerification = user.verificationStatus === "approved";
+    const hasFullAccess = user.verificationStatus === "approved";
     const hasAdmissionVerification = user.admissionVerified === true;
+    const isPendingAdminReview = user.verificationStatus === "pending";
+    const isAspirant = user.role === "aspirant";
 
-    if (hasIdVerification && hasAdmissionVerification) {
+    // Stage 2 complete: Full access
+    if (isAspirant && hasFullAccess) {
         return {
             message: "Your account is fully verified!",
             type: "info"
+        };
+    }
+
+    if (hasFullAccess && hasAdmissionVerification) {
+        return {
+            message: "Your account is fully verified!",
+            type: "info"
+        };
+    }
+
+    // Aspirant pending admin review
+    if (isAspirant && isPendingAdminReview) {
+        return {
+            message: "Your email is verified! Waiting for admin approval. You have view-only access until approved.",
+            type: "warning",
+            action: "View Status"
+        };
+    }
+
+    // Aspirant not yet verified
+    if (isAspirant && !hasFullAccess) {
+        return {
+            message: "Complete email verification to unlock all features. Admin will review your profile.",
+            type: "warning",
+            action: "Verify Email"
+        };
+    }
+
+    // Stage 1 complete for students/alumni: Pending admin review (limited access)
+    if (isPendingAdminReview && hasAdmissionVerification) {
+        return {
+            message: "Your admission is verified! Documents pending admin review. You have view-only access until approved.",
+            type: "warning",
+            action: "View Status"
         };
     }
 
@@ -133,7 +179,7 @@ export function getVerificationMessage(user: User): {
         }
     }
 
-    if (!hasIdVerification && !hasAdmissionVerification) {
+    if (!hasFullAccess && !hasAdmissionVerification) {
         return {
             message: "Complete ID card and admission number verification to unlock all features",
             type: "warning",
@@ -141,11 +187,11 @@ export function getVerificationMessage(user: User): {
         };
     }
 
-    if (!hasIdVerification) {
+    if (!hasFullAccess) {
         return {
-            message: "ID card verification pending. Upload your ID to unlock features.",
+            message: "ID card verification pending. Your documents are being reviewed by admin.",
             type: "warning",
-            action: "Upload ID Card"
+            action: "View Status"
         };
     }
 

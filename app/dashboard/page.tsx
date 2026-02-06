@@ -239,11 +239,13 @@ export default function DashboardPage() {
           </Alert>
         )}
 
-        {/* Verification Warning */}
+        {/* Verification Warning - Role-specific messaging */}
         {userData && !isAccountDeactivated(userData) && userData.role !== "admin" && !isFullyVerified(userData) && (
           <Alert className="border-amber-200 bg-amber-50">
             <AlertCircle className="h-4 w-4 text-amber-600" />
-            <AlertTitle className="text-amber-900">Limited Access</AlertTitle>
+            <AlertTitle className="text-amber-900">
+              {userData.verificationStatus === "pending" ? "Pending Admin Approval" : "Limited Access"}
+            </AlertTitle>
             <AlertDescription className="flex items-center justify-between">
               <div>
                 <p className="text-amber-800">{getVerificationMessage(userData).message}</p>
@@ -253,9 +255,17 @@ export default function DashboardPage() {
                   </p>
                 )}
               </div>
-              <ActionButton size="sm" variant="outline" className="ml-4" onClick={() => router.push("/onboarding")}>
-                Verify Now
-              </ActionButton>
+              {/* Don't show "Verify Now" button if already pending - they just need to wait */}
+              {userData.verificationStatus !== "pending" && (
+                <ActionButton size="sm" variant="outline" className="ml-4" onClick={() => router.push("/onboarding")}>
+                  {userData.role === "aspirant" ? "Complete Setup" : "Verify Now"}
+                </ActionButton>
+              )}
+              {userData.verificationStatus === "pending" && (
+                <span className="text-xs text-amber-700 ml-4 px-2 py-1 bg-amber-100 rounded">
+                  ⏳ Under Review
+                </span>
+              )}
             </AlertDescription>
           </Alert>
         )}
