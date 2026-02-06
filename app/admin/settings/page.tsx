@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { logAdminActivity } from "@/lib/firebase/adminLogs";
-import { useAuth } from "@/hooks/use-auth";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 interface PlatformSettings {
   // Verification settings
@@ -47,15 +47,16 @@ const defaultSettings: PlatformSettings = {
 };
 
 export default function SettingsPage() {
-  const { user: adminUser } = useAuth();
+  const { user: adminUser, isAuthReady } = useAdminAuth();
   const [settings, setSettings] = useState<PlatformSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
+    if (!isAuthReady) return;
     fetchSettings();
-  }, []);
+  }, [isAuthReady]);
 
   async function fetchSettings() {
     try {

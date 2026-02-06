@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { logAdminActivity } from "@/lib/firebase/adminLogs";
-import { useAuth } from "@/hooks/use-auth";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 interface Report {
   id: string;
@@ -45,7 +45,7 @@ const typeColors: Record<string, string> = {
 };
 
 export default function ReportsPage() {
-  const { user: adminUser } = useAuth();
+  const { user: adminUser, isAuthReady } = useAdminAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -60,8 +60,9 @@ export default function ReportsPage() {
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
+    if (!isAuthReady) return;
     fetchReports();
-  }, []);
+  }, [isAuthReady]);
 
   async function fetchReports() {
     try {

@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { logAdminActivity } from "@/lib/firebase/adminLogs";
-import { useAuth } from "@/hooks/use-auth";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 interface AlumniRecord {
   id: string;
@@ -29,7 +29,7 @@ interface AlumniRecord {
 }
 
 export default function AlumniDatabasePage() {
-  const { user: adminUser } = useAuth();
+  const { user: adminUser, isAuthReady } = useAdminAuth();
   const [records, setRecords] = useState<AlumniRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -59,8 +59,9 @@ export default function AlumniDatabasePage() {
   const [importing, setImporting] = useState(false);
 
   useEffect(() => {
+    if (!isAuthReady) return;
     fetchRecords();
-  }, []);
+  }, [isAuthReady]);
 
   async function fetchRecords() {
     try {

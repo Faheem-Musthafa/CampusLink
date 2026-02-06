@@ -29,30 +29,75 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
+      const { signInWithEmailAndPassword, createUserWithEmailAndPassword } = await import("firebase/auth");
+      const { getAuth } = await import("firebase/auth");
+      const { doc, getDoc, setDoc, serverTimestamp } = await import("firebase/firestore");
+      const { getDb } = await import("@/lib/firebase/config");
+      const auth = getAuth();
+      const db = getDb();
+
       // Check for environment variable fallback admin credentials
       const envAdminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
       const envAdminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
       
       if (envAdminEmail && envAdminPassword && email === envAdminEmail && password === envAdminPassword) {
-        // Fallback admin login via env vars
+        // Fallback admin login via env vars - also sign in to Firebase Auth
+        let userCredential;
+        
+        try {
+          // Try to sign in first
+          userCredential = await signInWithEmailAndPassword(auth, email, password);
+        } catch (signInError: unknown) {
+          // If user doesn't exist, create them
+          const signInMessage = signInError instanceof Error ? signInError.message : "";
+          if (signInMessage.includes("user-not-found") || signInMessage.includes("invalid-credential")) {
+            try {
+              userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            } catch (createError: unknown) {
+              const createMessage = createError instanceof Error ? createError.message : "";
+              // If email already in use but wrong password, throw original error
+              if (createMessage.includes("email-already-in-use")) {
+                setError("Invalid password for admin account");
+                setLoading(false);
+                return;
+              }
+              throw createError;
+            }
+          } else {
+            throw signInError;
+          }
+        }
+
+        // Ensure admin user document exists with admin role
+        const userDocRef = doc(db, "users", userCredential.user.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (!userDoc.exists()) {
+          // Create admin user document
+          await setDoc(userDocRef, {
+            uid: userCredential.user.uid,
+            email: email,
+            name: "System Administrator",
+            role: "admin",
+            verificationStatus: "approved",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        } else if (userDoc.data()?.role !== "admin") {
+          // Update role to admin if not already
+          await setDoc(userDocRef, { role: "admin", updatedAt: serverTimestamp() }, { merge: true });
+        }
+
         sessionStorage.setItem("adminAuthenticated", "true");
         sessionStorage.setItem("adminFallback", "true");
         router.push("/admin");
         return;
       }
 
-      // Use Firebase Auth to login
-      const { signInWithEmailAndPassword } = await import("firebase/auth");
-      const { getAuth } = await import("firebase/auth");
-      const auth = getAuth();
-      
+      // Use Firebase Auth to login for regular admin accounts
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
       // Check if user has admin role
-      const { doc, getDoc } = await import("firebase/firestore");
-      const { getDb } = await import("@/lib/firebase/config");
-      const db = getDb();
-      
       const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
       
       if (!userDoc.exists() || userDoc.data()?.role !== "admin") {

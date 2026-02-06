@@ -18,6 +18,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { getDb } from "@/lib/firebase/config";
 import { PageHeader, StatsCard, StatsGrid } from "@/components/admin";
 import { Button } from "@/components/ui/button";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 interface DashboardStats {
   totalUsers: number;
@@ -36,6 +37,7 @@ interface QuickAction {
 }
 
 export default function AdminDashboard() {
+  const { isAuthReady } = useAdminAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     pendingVerifications: 0,
@@ -47,6 +49,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Only fetch data when Firebase Auth is ready
+    if (!isAuthReady) return;
+
     async function fetchStats() {
       try {
         const db = getDb();
@@ -84,7 +89,7 @@ export default function AdminDashboard() {
     }
 
     fetchStats();
-  }, []);
+  }, [isAuthReady]);
 
   const quickActions: QuickAction[] = [
     {

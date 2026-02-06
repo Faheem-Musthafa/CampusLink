@@ -8,6 +8,7 @@ import { PageHeader, DataTable, SearchFilter } from "@/components/admin";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getActionDescription, getActionColor } from "@/lib/firebase/adminLogs";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 interface ActivityLog {
   id: string;
@@ -37,6 +38,7 @@ const actionColors: Record<string, string> = {
 };
 
 export default function LogsPage() {
+  const { isAuthReady } = useAdminAuth();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -46,8 +48,9 @@ export default function LogsPage() {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isAuthReady) return;
     fetchLogs();
-  }, []);
+  }, [isAuthReady]);
 
   async function fetchLogs() {
     try {

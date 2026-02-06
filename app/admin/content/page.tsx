@@ -20,7 +20,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { logAdminActivity } from "@/lib/firebase/adminLogs";
-import { useAuth } from "@/hooks/use-auth";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 interface Job {
   id: string;
@@ -53,7 +53,7 @@ const jobTypeColors: Record<string, string> = {
 };
 
 export default function ContentPage() {
-  const { user: adminUser } = useAuth();
+  const { user: adminUser, isAuthReady } = useAdminAuth();
   const [activeTab, setActiveTab] = useState("jobs");
   
   // Jobs state
@@ -78,9 +78,10 @@ export default function ContentPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
+    if (!isAuthReady) return;
     fetchJobs();
     fetchPosts();
-  }, []);
+  }, [isAuthReady]);
 
   async function fetchJobs() {
     try {

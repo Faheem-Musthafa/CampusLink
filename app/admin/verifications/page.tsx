@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { logAdminActivity } from "@/lib/firebase/adminLogs";
-import { useAuth } from "@/hooks/use-auth";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 interface VerificationRequest {
   id: string;
@@ -39,7 +39,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function VerificationsPage() {
-  const { user: adminUser } = useAuth();
+  const { user: adminUser, isAuthReady } = useAdminAuth();
   const [requests, setRequests] = useState<VerificationRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -53,8 +53,9 @@ export default function VerificationsPage() {
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
+    if (!isAuthReady) return;
     fetchRequests();
-  }, []);
+  }, [isAuthReady]);
 
   async function fetchRequests() {
     try {

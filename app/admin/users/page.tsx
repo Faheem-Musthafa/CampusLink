@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { logAdminActivity } from "@/lib/firebase/adminLogs";
-import { useAuth } from "@/hooks/use-auth";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 interface User {
   id: string;
@@ -48,7 +48,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function UsersPage() {
-  const { user: adminUser } = useAuth();
+  const { user: adminUser, isAuthReady } = useAdminAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -63,6 +63,8 @@ export default function UsersPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (!isAuthReady) return;
+
     async function fetchUsers() {
       try {
         const db = getDb();
@@ -80,7 +82,7 @@ export default function UsersPage() {
       }
     }
     fetchUsers();
-  }, []);
+  }, [isAuthReady]);
 
   // Filter users
   const filteredUsers = useMemo(() => {
